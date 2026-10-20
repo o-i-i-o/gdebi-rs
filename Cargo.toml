@@ -1,0 +1,17 @@
+[workspace]
+resolver = "2"
+members = ["crates/gdebi-core", "crates/gdebi-gtk"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "GPL-3.0-or-later"
+
+[workspace.dependencies]
+gdebi-core = { path = "crates/gdebi-core" }
+thiserror = "2"
+ar = "0.9"
+tar = "0.4"
+flate2 = "1"
+clap = { version = "4", features = ["derive"] }
+libc = "0.2"

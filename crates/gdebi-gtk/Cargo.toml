@@ -1,0 +1,18 @@
+[package]
+name = "gdebi-gtk"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "gdebi GTK4 frontend"
+
+[[bin]]
+name = "gdebi-rs-gtk"
+path = "src/main.rs"
+
+[dependencies]
+gdebi-core.workspace = true
+clap.workspace = true
+libc = "0.2"
+gtk4 = "0.9"
+# gtk_app 的后台安装线程 → 主线程事件流(glib 0.20 无内置 channel)
+async-channel = "2"

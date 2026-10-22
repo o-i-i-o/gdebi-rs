@@ -8,6 +8,8 @@
 #   usr/share/dbus-1/system-services/    org.fdebm.service(激活文件,Exec 指向 /usr/local/bin)
 #   usr/share/polkit-1/actions/          org.fdebm.policy(授权策略)
 #   usr/share/locale/*/LC_MESSAGES/      fdebm.mo(po/Makefile install)
+#   usr/share/applications/              org.fdebm.gtk.desktop(桌面入口)
+#   usr/share/icons/hicolor/scalable/apps/ org.fdebm.gtk.svg(应用图标)
 #   usr/share/doc/fdebm/copyright        LICENSE
 #
 # 不引入 cargo-deb;依赖:cargo、dpkg-deb、msgfmt(gettext)、strip(binutils)。
@@ -37,6 +39,8 @@ install -d "$STAGE/DEBIAN" \
     "$STAGE/usr/share/dbus-1/system.d" \
     "$STAGE/usr/share/dbus-1/system-services" \
     "$STAGE/usr/share/polkit-1/actions" \
+    "$STAGE/usr/share/applications" \
+    "$STAGE/usr/share/icons/hicolor/scalable/apps" \
     "$STAGE/usr/share/doc/$NAME"
 
 install -m755 target/release/fdebm-daemon      "$STAGE/usr/local/bin/"
@@ -44,6 +48,8 @@ install -m755 target/release/fdebm-gtk         "$STAGE/usr/local/bin/"
 install -m644 data/dbus/org.fdebm.conf         "$STAGE/usr/share/dbus-1/system.d/"
 install -m644 data/dbus/org.fdebm.service      "$STAGE/usr/share/dbus-1/system-services/"
 install -m644 data/polkit/org.fdebm.policy     "$STAGE/usr/share/polkit-1/actions/"
+install -m644 data/applications/org.fdebm.gtk.desktop "$STAGE/usr/share/applications/"
+install -m644 data/icons/org.fdebm.gtk.svg     "$STAGE/usr/share/icons/hicolor/scalable/apps/"
 install -m644 LICENSE                          "$STAGE/usr/share/doc/$NAME/copyright"
 
 # 翻译:复用 po/Makefile 的 install 目标(DESTDIR 指向 staging)
@@ -63,7 +69,7 @@ Section: admin
 Priority: optional
 Architecture: $ARCH
 Maintainer: fdebm maintainers <fdebm@localhost>
-Depends: libgtk-4-1, dbus, polkitd | policykit-1, apt
+Depends: libgtk-4-1, dbus, polkitd | policykit-1, apt, shared-mime-info
 Installed-Size: $INSTALLED_SIZE
 Description: 本地 .deb 安装管理器(fdebm)
  特权分离架构:D-Bus 守护进程执行解析/下载/dpkg 安装,GTK4 瘦客户端

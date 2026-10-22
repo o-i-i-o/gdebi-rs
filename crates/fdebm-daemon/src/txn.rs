@@ -16,7 +16,7 @@ use std::time::SystemTime;
 
 use fdebm_core::download::{self, DownloadProgress};
 use fdebm_core::i18n::tf;
-use fdebm_core::install::{self, CancelHandle, InstallBatch};
+use fdebm_core::install::{self, CancelHandle, ConfPolicy, InstallBatch};
 use fdebm_core::solver::{self, Verdict};
 use fdebm_core::sysstate::SysState;
 use fdebm_core::ui::{AlertKind, InstallProgress, Ui};
@@ -157,6 +157,7 @@ pub fn start_install(
     conn: &zbus::Connection,
     path: String,
     apt_opts: Vec<String>,
+    conf_policy: String,
     caller: String,
 ) -> u32 {
     let cancel = Arc::new(CancelHandle::new());
@@ -166,7 +167,7 @@ pub fn start_install(
     std::thread::spawn(move || {
         let txn = m.inner.txns.lock().unwrap().get(&id).cloned();
         let Some(txn) = txn else { return };
-        run_install(&m, &conn, &txn, id, &path, &apt_opts, &caller);
+        run_install(&m, &conn, &txn, id, &path, &apt_opts, &conf_policy, &caller);
     });
     id
 }
@@ -209,6 +210,10 @@ pub fn analyze(
             format!("{}:{}", name, arch)
         };
         let installed_version = sys.installed_version(&key).unwrap_or_default().to_string();
+        let conffile_conflicts: Vec<(String, String)> = fdebm_core::conffile::conflicts(&deb, &sys)
+            .into_iter()
+            .map(|c| (c.package, c.path))
+            .collect();
         Ok(match solver::resolve(&sys, &deb)? {
             Verdict::Installable(res) => (
                 true,
@@ -217,6 +222,7 @@ pub fn analyze(
                 res.changes.remove,
                 res.changes.unauthenticated,
                 installed_version,
+                conffile_conflicts,
             ),
             Verdict::Uninstallable(failure) => (
                 false,
@@ -225,6 +231,7 @@ pub fn analyze(
                 Vec::new(),
                 Vec::new(),
                 installed_version,
+                conffile_conflicts,
             ),
         })
     };

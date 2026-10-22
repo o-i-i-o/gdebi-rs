@@ -278,11 +278,10 @@ msgstr ""
 msgid "Loading..."
 msgstr "正在加载..."
 
-#: ../crates/gdebi-gtk/src/gtk_app.rs:731
-#, fuzzy, rust-format
-#| msgid "gdebi error, file not found: %s\n"
-msgid "gdebi error, file not found: {0}"
-msgstr "gdebi 错误，找不到文件：%s\n"
+#: ../crates/fdebm-gtk/src/gtk_app.rs
+#, rust-format
+msgid "fdebm error, file not found: {0}"
+msgstr "fdebm 错误，找不到文件：{0}"
 
 #: ../crates/gdebi-gtk/src/gtk_app.rs:745
 #, fuzzy
@@ -836,3 +835,29 @@ msgstr "媒介改变"
 
 #~ msgid "_Open..."
 #~ msgstr "打开(_O)..."
+
+#: ../crates/fdebm-gtk/src/gtk_app.rs
+msgid "Modified configuration files"
+msgstr "已修改的配置文件"
+
+#: ../crates/fdebm-gtk/src/gtk_app.rs
+msgid ""
+"The following configuration files have been modified locally and the new "
+"package ships different versions:"
+msgstr "以下配置文件在本地被修改过，且与新包携带的版本不同："
+
+#: ../crates/fdebm-gtk/src/gtk_app.rs
+msgid "Keep _my version"
+msgstr "保留我的版本(_K)"
+
+#: ../crates/fdebm-gtk/src/gtk_app.rs
+msgid "Use the package's _new version"
+msgstr "使用包的新版本(_N)"
+
+#: ../crates/fdebm-gtk/src/gtk_app.rs
+msgid "_Cancel"
+msgstr "取消(_C)"
+
+#: ../crates/fdebm-core/src/error.rs
+msgid "operation cancelled"
+msgstr "操作已取消"

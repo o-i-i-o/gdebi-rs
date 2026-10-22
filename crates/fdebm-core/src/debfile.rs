@@ -72,7 +72,7 @@ impl DebFile {
         self.field(name).map(str::trim)
     }
 
-    /// control.tar 成员名列表(排序;对应旧版 control_filelist)
+    /// control.tar 成员名列表(排序)
     pub fn control_filelist(&self) -> Result<Vec<String>, FdebmError> {
         let mut out = Vec::new();
         let plain = decompress_control_tar(&self.control_tar)?;
@@ -84,7 +84,7 @@ impl DebFile {
         Ok(out)
     }
 
-    /// data.tar 成员名列表(按 tar 流顺序;对应旧版 filelist)
+    /// data.tar 成员名列表(按 tar 流顺序)
     pub fn data_filelist(&self) -> Result<Vec<String>, FdebmError> {
         let child = Command::new("dpkg-deb")
             .arg("--fsys-tarfile")
@@ -130,10 +130,22 @@ impl DebFile {
         }
         Ok(Vec::new())
     }
+
+    /// 包声明的 conffiles 列表(DEBIAN/conffiles 成员,每行一个绝对路径;
+    /// 成员不存在时返回空表)
+    pub fn conffiles(&self) -> Result<Vec<String>, FdebmError> {
+        let raw = self.control_content("conffiles")?;
+        Ok(String::from_utf8_lossy(&raw)
+            .lines()
+            .map(str::trim)
+            .filter(|l| !l.is_empty() && !l.starts_with('#'))
+            .map(String::from)
+            .collect())
+    }
 }
 
 /// tar 成员名规范化:去 "./" 前缀;根目录项 "./" 保留原样
-/// (与 python-apt 的 TarMember.name 语义一致,旧版 GUI 展示基准)
+/// (与 python-apt 的 TarMember.name 语义一致)
 fn normalize_member(name: &str) -> String {
     match name.strip_prefix("./") {
         Some("") => "./".to_string(),
@@ -206,9 +218,21 @@ mod tests {
 
     #[test]
     fn control_filelist_is_sorted() {
-        // 旧版 control_filelist 经 sorted();根目录项为 "./"
+        // 控制成员列表经排序;根目录项为 "./"
         let deb = test4();
         assert_eq!(deb.control_filelist().unwrap(), vec!["./", "control"]);
+    }
+
+    /// 包声明 conffiles 的解析(fixture 自带 conffiles 成员)
+    #[test]
+    fn conffiles_list_from_control() {
+        let path =
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../tests/conf-test-package_1.1.deb");
+        let deb = DebFile::open(&path).expect("open conf-test-package_1.1.deb");
+        assert_eq!(deb.conffiles().unwrap(), vec!["/etc/configuration-file"]);
+        // 无 conffiles 成员的包返回空表
+        let plain = test4();
+        assert!(plain.conffiles().unwrap().is_empty());
     }
 
     #[test]

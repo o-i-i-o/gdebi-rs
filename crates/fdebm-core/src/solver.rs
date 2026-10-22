@@ -1,4 +1,4 @@
-//! varisat(CDCL SAT)编码的依赖求解器 —— 替代原 apt-get -s 文本编排。
+//! varisat(CDCL SAT)编码的依赖求解器。
 //!
 //! 求解域:已安装库(可卸载)∪ 仓库候选 ∪ 本地 deb(强制)。
 //! 编码:
@@ -6,13 +6,13 @@
 //! - 同名二进制包(键)单元两两互斥(AMO)
 //! - Depends/Pre-Depends:选中 → 每个依赖组至少一个满足者(直接命中或虚拟提供)
 //! - Conflicts/Breaks:互斥子句;Replaces 覆盖时豁免(dpkg 语义)
-//! - Essential 包强制保持安装(比旧版 gdebi 多出的保护)
+//! - Essential 包强制保持安装(保护性约束)
 //!
 //! 求解策略:已装包默认全部保持(apt 语义快路径)→ 必要时退回假设式
 //! 迭代精化(最小化卸载、新装键优先新版本)。
 //!
-//! 与旧版 gdebi 的行为差异(有意):失败原因不再逐条比对 python-apt 的
-//! failure_string,统一为"求解失败"类消息;or 组解析交给 SAT 而非首分支回溯。
+//! 失败原因统一为"求解失败"类消息(不逐条罗列);or 组解析交给 SAT
+//! 而非首分支回溯。
 
 use std::collections::{BTreeMap, HashSet};
 use std::path::PathBuf;
@@ -318,7 +318,7 @@ pub fn resolve(sys: &SysState, deb: &DebFile) -> Result<Verdict, FdebmError> {
         .unwrap_or("all")
         .to_string();
 
-    // 架构检查(与旧版 gdebi 同语义)
+    // 架构检查(dpkg 语义)
     let mut archs = vec![sys.native_arch.clone(), "all".to_string()];
     archs.extend(sys.foreign_arches.iter().cloned());
     if !archs.contains(&arch) {
@@ -328,7 +328,7 @@ pub fn resolve(sys: &SysState, deb: &DebFile) -> Result<Verdict, FdebmError> {
         )));
     }
 
-    // 降级拒绝(与旧版 gdebi 同语义;重装同版本放行)
+    // 降级拒绝(dpkg 语义;重装同版本放行)
     let key = if arch == "all" || arch == sys.native_arch {
         name.clone()
     } else {
@@ -477,7 +477,7 @@ fn encode_and_solve(sys: &SysState, local: crate::sysstate::Candidate) -> Verdic
     lits.push(enc.plit(local_idx));
     add_clause(&mut solver, &mut lits);
 
-    // Essential 包强制保持安装(旧版 gdebi 缺失的保护)
+    // Essential 包强制保持安装(保护性约束)
     for (i, pkg) in sys.installed.iter().enumerate() {
         if pkg.essential {
             lits.clear();
@@ -856,7 +856,7 @@ mod tests {
         l.pkg.depends = dep("libc6", ">=", "2.30");
         let r = verdict_ok(encode_and_solve(&st, l));
         assert!(r.downloads.is_empty());
-        // required_changes 仍含本地包自身(旧版 gdebi 语义)
+        // required_changes 仍含本地包自身(变更集语义)
         assert_eq!(r.changes.install, vec!["myapp".to_string()]);
     }
 

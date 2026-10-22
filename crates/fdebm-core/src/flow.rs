@@ -39,9 +39,9 @@ pub fn describe_deb(deb: &DebFile) -> PackageInfo {
 const MIME_PROBE_LEN: usize = 64 * 1024;
 
 /// 成员内容 → 展示文本:文本原样显示,二进制显示文件类型。
-/// 与旧版 gdebi 的偏离(旧版直接向 TextView 塞原始字节):内嵌 NUL 经
-/// glib 的 &str→C 字符串转换为非法(debug 构建直接 panic),且二进制
-/// 内容塞入文本视图本就是乱码,判定后展示 MIME 类型更可读。
+/// 内嵌 NUL 的字节流经 glib 的 &str→C 字符串转换非法
+/// (debug 构建直接 panic),且二进制内容塞入文本视图本就是乱码,
+/// 判定后展示 MIME 类型更可读。
 pub fn content_preview(bytes: &[u8]) -> String {
     // 含 NUL 即视为二进制(git 同款启发式);无 NUL 时 lossy 结果
     // 不会含 NUL,保证前端 set_text 路径安全

@@ -47,6 +47,9 @@ pub struct Pkg {
     /// 版本化关系对虚拟名仅命中版本化提供)
     pub provides: Vec<(String, Option<String>)>,
     pub essential: bool,
+    /// 已安装版本登记的 conffiles:(绝对路径, 装包时的 md5);
+    /// 仅 status 有此字段,仓库索引条目为空表
+    pub conffiles: Vec<(String, String)>,
 }
 
 /// 仓库来源信息(来自 indextargets)
@@ -230,7 +233,22 @@ pub fn pkg_from_fields<'a>(
         replaces: parse_depends(get("Replaces").unwrap_or("")),
         provides: provided_names(get("Provides").unwrap_or("")),
         essential: get("Essential").map(str::trim) == Some("yes"),
+        conffiles: parse_conffiles(get("Conffiles").unwrap_or("")),
     })
+}
+
+/// status 的 Conffiles 字段 → (路径, md5) 列表
+/// (行形如 " /etc/foo <md5>",可带 obsolete 标记;损坏行跳过)
+fn parse_conffiles(field: &str) -> Vec<(String, String)> {
+    field
+        .lines()
+        .filter_map(|l| {
+            let mut it = l.split_whitespace();
+            let path = it.next()?;
+            let md5 = it.next()?;
+            Some((path.to_string(), md5.to_string()))
+        })
+        .collect()
 }
 
 /// 解析 /var/lib/dpkg/status → 已安装包列表
@@ -501,6 +519,22 @@ mod tests {
     fn foreign_arch_key_gets_qualifier() {
         let p = pkg_from("Package: libc6-i386\nArchitecture: i386\nVersion: 1\n").unwrap();
         assert_eq!(p.key, "libc6-i386:i386");
+    }
+
+    #[test]
+    fn status_conffiles_parsed() {
+        let p = pkg_from(
+            "Package: adduser\nVersion: 1\nStatus: install ok installed\n\
+             Conffiles:\n /etc/adduser.conf 8f3bbb\n /etc/deluser.conf aaa111 obsolete\n",
+        )
+        .unwrap();
+        assert_eq!(
+            p.conffiles,
+            vec![
+                ("/etc/adduser.conf".to_string(), "8f3bbb".to_string()),
+                ("/etc/deluser.conf".to_string(), "aaa111".to_string())
+            ]
+        );
     }
 
     #[test]

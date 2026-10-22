@@ -4,8 +4,7 @@
   部署: cp 到 /usr/share/polkit-1/actions/org.fdebm.policy
 
   分析(AnalyzeLocalFile)免授权(只读);安装/卸载各需一次管理员认证,
-  auth_admin_keep 在短时间内免重复认证(与原版 gdebi 的 gksu/pkexec
-  体验对齐,避免批量操作时反复输密码)。
+  auth_admin_keep 在短时间内免重复认证,避免批量操作时反复输密码。
 -->
 <!DOCTYPE policyconfig PUBLIC
  "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"

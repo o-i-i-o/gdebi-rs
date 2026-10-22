@@ -133,6 +133,8 @@ struct Analysis {
     failure: String,
     changes: Changes,
     installed_version: String,
+    /// conffile 冲突列表(包名, 路径)
+    conflicts: Vec<(String, String)>,
 }
 
 #[zbus::proxy(
@@ -148,8 +150,17 @@ trait Fdebm {
         apt_opts: &[&str],
     ) -> zbus::Result<fdebm_core::AnalyzeResult>;
 
-    /// 安装事务(授权/下载/dpkg 在守护进程内执行)→ 事务 id
-    fn install_local_file(&self, path: &str, apt_opts: &[&str]) -> zbus::Result<u32>;
+    /// 安装事务(授权/下载/dpkg 在守护进程内执行)→ 事务 id;
+    /// conf_policy: conffile 预检决策("" / "keep" / "replace")
+    fn install_local_file(
+        &self,
+        path: &str,
+        apt_opts: &[&str],
+        conf_policy: &str,
+    ) -> zbus::Result<u32>;
+
+    /// 取消运行中的事务
+    fn cancel(&self, id: u32) -> zbus::Result<bool>;
 
     /// 卸载事务 → 事务 id
     fn remove_package(&self, name: &str) -> zbus::Result<u32>;
@@ -168,10 +179,11 @@ async fn analyze_via_daemon(opts: &[String], file: &Path) -> Result<Analysis, St
         .await
         .map_err(|e| e.to_string())?;
     let opts: Vec<&str> = opts.iter().map(String::as_str).collect();
-    let (installable, failure, install, remove, unauthenticated, installed_version) = client
-        .analyze_local_file(&file.to_string_lossy(), &opts)
-        .await
-        .map_err(|e| e.to_string())?;
+    let (installable, failure, install, remove, unauthenticated, installed_version, conflicts) =
+        client
+            .analyze_local_file(&file.to_string_lossy(), &opts)
+            .await
+            .map_err(|e| e.to_string())?;
     Ok(Analysis {
         installable,
         failure,
@@ -181,6 +193,7 @@ async fn analyze_via_daemon(opts: &[String], file: &Path) -> Result<Analysis, St
             unauthenticated,
         },
         installed_version,
+        conflicts,
     })
 }
 
@@ -211,6 +224,8 @@ struct MainWindow {
     changes: Rc<RefCell<Option<Changes>>>,
     /// 分析代际号:文件切换/刷新后丢弃过期的守护进程结论
     analysis_gen: Cell<u64>,
+    /// 当前文件的 conffile 冲突(包名, 路径);安装前呈现覆盖决策对话框
+    conffiles: Rc<RefCell<Vec<(String, String)>>>,
 }
 
 pub fn run() {
@@ -440,6 +455,7 @@ fn build_window(window: &gtk::ApplicationWindow, apt_opts: Vec<String>) -> Rc<Ma
         current_file: Rc::new(RefCell::new(None)),
         changes: Rc::new(RefCell::new(None)),
         analysis_gen: Cell::new(0),
+        conffiles: Rc::new(RefCell::new(Vec::new())),
     });
 
     // Install / Remove 接线
@@ -469,7 +485,7 @@ fn on_file_selected(gui: &MainWindow, sel: &gtk::TreeSelection) {
         .downcast::<gtk::TreeStore>()
         .expect("files tree store");
     let path = store.path(&iter);
-    // 顶层为组标题(旧版:depth < 2 不处理内容)
+    // 顶层为组标题:不处理内容
     if path.depth() < 2 {
         return;
     }
@@ -543,7 +559,7 @@ fn fill_files(gui: &MainWindow, deb: &DebFile) {
     gui.tree_files.expand_all();
 }
 
-/// 后台运行 lintian 并流式回填(旧版 _run_lintian)
+/// 后台运行 lintian 并流式回填
 fn run_lintian(gui: &MainWindow, file: &Path) {
     let buf = gui.lintian_output.buffer();
     if !Path::new("/usr/bin/lintian").exists() {
@@ -674,8 +690,10 @@ fn setup_actions(app: &Application, gui: &Rc<MainWindow>) {
     app.add_action(&refresh);
 
     let quit = gio::SimpleAction::new("quit", None);
-    let win = gui.window.clone();
-    quit.connect_activate(move |_, _| win.close());
+    let app_quit = app.clone();
+    // 强制退出:主窗口 close() 在存在存活对话框(事务/确认/关于)时不会
+    // 终结应用,曾表现为"无法关闭";GApplication::quit 无条件收尾
+    quit.connect_activate(move |_, _| app_quit.quit());
     app.add_action(&quit);
 
     let about = gio::SimpleAction::new("about", None);
@@ -715,15 +733,16 @@ fn load_deb(gui: &Rc<MainWindow>, file: &Path) {
     let generation = gui.analysis_gen.get() + 1;
     gui.analysis_gen.set(generation);
     *gui.changes.borrow_mut() = None;
+    gui.conffiles.borrow_mut().clear();
     *gui.current_file.borrow_mut() = Some(file.to_path_buf());
 
-    // ！！！旧版入口:文件不存在直接提示
+    // 文件不存在直接提示
     if !file.exists() {
         show_alert(
             &gui.window,
             AlertKind::Error,
             &tf(
-                "gdebi error, file not found: {0}",
+                "fdebm error, file not found: {0}",
                 &[&file.display().to_string()],
             ),
             None,
@@ -772,7 +791,7 @@ fn load_deb(gui: &Rc<MainWindow>, file: &Path) {
     });
 }
 
-/// 呈现依赖检查结论(旧版 verdict 分支的呈现逻辑)
+/// 呈现依赖检查结论(守护进程分析结果)
 fn apply_verdict(gui: &Rc<MainWindow>, version: &str, analysis: Result<Analysis, String>) {
     let analysis = match analysis {
         Ok(a) => a,
@@ -792,8 +811,10 @@ fn apply_verdict(gui: &Rc<MainWindow>, version: &str, analysis: Result<Analysis,
         }
     };
 
+    *gui.conffiles.borrow_mut() = analysis.conflicts;
+
     if !analysis.installable {
-        // 旧版 check 失败分支:红色错误 + install 禁用
+        // 检查失败:红色错误 + install 禁用
         gui.label_status.set_markup(&tf(
             "<span foreground=\"red\" weight=\"bold\">Error: {0}</span>",
             &[&glib::markup_escape_text(&analysis.failure)],
@@ -805,7 +826,7 @@ fn apply_verdict(gui: &Rc<MainWindow>, version: &str, analysis: Result<Analysis,
 
     let changes = analysis.changes;
     let (inst, rm) = (&changes.install, &changes.remove);
-    // 旧版 get_changes 的 deps markup(ngettext 处理复数)
+    // 依赖变更摘要 markup(ngettext 处理复数)
     let mut deps = String::new();
     if !rm.is_empty() {
         deps.push_str(&tf(
@@ -834,7 +855,7 @@ fn apply_verdict(gui: &Rc<MainWindow>, version: &str, analysis: Result<Analysis,
         !analysis.installed_version.is_empty() && analysis.installed_version == version;
 
     if same_installed {
-        // 旧版同版本分支:状态文案 + Reinstall + Remove 显示
+        // 同版本已装:状态文案 + Reinstall + Remove 显示
         gui.label_status
             .set_text(&gettext("Same version is already installed"));
         gui.button_install.set_label(&gettext("_Reinstall Package"));
@@ -854,7 +875,7 @@ fn apply_verdict(gui: &Rc<MainWindow>, version: &str, analysis: Result<Analysis,
     *gui.changes.borrow_mut() = Some(changes);
 }
 
-/// Details 页签与描述的静态填充(旧版 label_name/textview_description)
+/// Details 页签与描述的静态填充
 fn fill_static(gui: &MainWindow, info: &PackageInfo, deb: &DebFile) {
     gui.label_name
         .set_markup(&format!("<b><big>{}</big></b>", info.package));
@@ -884,18 +905,21 @@ fn fill_static(gui: &MainWindow, info: &PackageInfo, deb: &DebFile) {
 }
 
 // ---------------------------------------------------------------------------
-// 安装 / 移除动作(对话框对齐 dialog_deb_install;执行体在守护进程)
+// 安装 / 移除动作(执行体在守护进程)
 // ---------------------------------------------------------------------------
 
 /// 事务请求(选择守护进程方法)
 enum TxnRequest {
-    Install { file: PathBuf },
+    Install {
+        file: PathBuf,
+        conf_policy: String,
+    },
     Remove { name: String },
 }
 
 /// 事务进度对话框:label_action + progressbar + label_install_status +
 /// Terminal expander + autoclose 勾选;Close 按钮运行中禁用;
-/// 期间主窗口禁用(旧版 set_sensitive),完成后恢复。
+/// 期间主窗口禁用,完成后恢复。
 /// 执行流:连接系统总线 → 订阅信号(先于方法调用,防漏早期输出)→
 /// 调用 InstallLocalFile/RemovePackage → 信号泵直至 Finished。
 fn run_txn_dialog(
@@ -949,12 +973,10 @@ fn run_txn_dialog(
     box_.append(&autoclose);
     dialog.content_area().append(&box_);
 
-    let close_btn = dialog
-        .widget_for_response(ResponseType::Close)
-        .and_downcast::<gtk::Button>();
-    if let Some(b) = &close_btn {
-        b.set_sensitive(false);
-    }
+    // Close 始终可用:运行中关闭 = 取消事务并立即恢复界面。
+    // 此前运行中禁用 Close 且主窗口 insensitive,守护进程侧一旦挂起
+    // (下载停滞/无 polkit agent/维护脚本等待)整个应用无法关闭。
+    // 标题栏 X 发出的 DeleteEvent 响应与 Close 按钮同路处理
     gui.window.set_sensitive(false);
 
     // pulse 定时器(dpkg 行输出无精确百分比;收到数值进度后切换为 fraction,
@@ -968,8 +990,11 @@ fn run_txn_dialog(
         },
     ));
 
-    dialog.connect_response(|d, r| {
-        if r == ResponseType::Close {
+    // 用户关闭 → 经 channel 通知信号泵;对话框立即销毁,收尾在泵内完成
+    let (close_tx, close_rx) = async_channel::bounded::<()>(1);
+    dialog.connect_response(move |d, r| {
+        if matches!(r, ResponseType::Close | ResponseType::DeleteEvent) {
+            let _ = close_tx.try_send(());
             d.destroy();
         }
     });
@@ -994,10 +1019,10 @@ fn run_txn_dialog(
                 .await
                 .map_err(|e| e.to_string())?;
             let id = match &req {
-                TxnRequest::Install { file } => {
+                TxnRequest::Install { file, conf_policy } => {
                     let opts: Vec<&str> = apt_opts.iter().map(String::as_str).collect();
                     proxy
-                        .install_local_file(&file.to_string_lossy(), &opts)
+                        .install_local_file(&file.to_string_lossy(), &opts, conf_policy)
                         .await
                         .map_err(|e| e.to_string())?
                 }
@@ -1012,16 +1037,13 @@ fn run_txn_dialog(
 
         // conn/proxy 以 "_" 绑定保活:信号按唯一名投递,事务期间连接
         // 断开会让 daemon 侧 polkit 解析调用者失败(NameHasNoOwner)
-        let (_conn, _proxy, mut sigs, id) = match started {
+        let (_conn, proxy, mut sigs, id) = match started {
             Ok((c, p, s, id)) => (c, p, s, id),
             Err(e) => {
-                if let Some(id) = pulse_id.take() {
-                    id.remove();
+                if let Some(pid) = pulse_id.take() {
+                    pid.remove();
                 }
                 bar.set_fraction(1.0);
-                if let Some(b) = &close_btn {
-                    b.set_sensitive(true);
-                }
                 window.set_sensitive(true);
                 statusbar.push(ctx, &failed);
                 show_alert(&window, AlertKind::Error, &gettext("fdebm error"), Some(&e));
@@ -1029,97 +1051,175 @@ fn run_txn_dialog(
             }
         };
 
-        // 信号泵:OutputLine/ProgressChanged/Finished(按事务 id 过滤)
+        // 信号泵:OutputLine/ProgressChanged/Finished(按事务 id 过滤),
+        // 与用户关闭事件竞争
+        enum Ev {
+            Sig(Option<zbus::Message>),
+            Close,
+        }
         let mut ok = false;
-        while let Some(msg) = sigs.next().await {
-            let header = msg.header();
-            let Some(member) = header.member().map(|m| m.as_str()) else {
-                continue;
-            };
-            match member {
-                "OutputLine" => {
-                    if let Ok((sid, line)) = msg.body().deserialize::<(u32, String)>()
-                        && sid == id
-                    {
-                        label_status.set_text(&line);
-                        let buf = textview.buffer();
-                        let mut end = buf.end_iter();
-                        buf.insert(&mut end, &format!("{line}\n"));
-                        textview.scroll_to_iter(&mut end, 0.0, false, 0.0, 0.0);
-                    }
+        let mut finished = false;
+        let mut user_closed = false;
+        loop {
+            let ev = futures_lite::future::race(
+                async { Ev::Sig(sigs.next().await) },
+                async {
+                    let _ = close_rx.recv().await;
+                    Ev::Close
+                },
+            )
+            .await;
+            match ev {
+                Ev::Close => {
+                    user_closed = true;
+                    break;
                 }
-                "ProgressChanged" => {
-                    if let Ok((sid, percent, desc)) = msg.body().deserialize::<(u32, f64, String)>()
-                        && sid == id
-                    {
-                        if percent < 0.0 {
-                            bar.pulse();
-                        } else {
-                            // 首个数值进度:停 pulse 定时器,改精确显示
-                            if let Some(pid) = pulse_id.take() {
-                                pid.remove();
+                Ev::Sig(None) => break, // 信号流中断(守护进程退出/总线断开)
+                Ev::Sig(Some(msg)) => {
+                    let header = msg.header();
+                    let Some(member) = header.member().map(|m| m.as_str()) else {
+                        continue;
+                    };
+                    match member {
+                        "OutputLine" => {
+                            if let Ok((sid, line)) = msg.body().deserialize::<(u32, String)>()
+                                && sid == id
+                            {
+                                label_status.set_text(&line);
+                                let buf = textview.buffer();
+                                let mut end = buf.end_iter();
+                                buf.insert(&mut end, &format!("{line}\n"));
+                                textview.scroll_to_iter(&mut end, 0.0, false, 0.0, 0.0);
                             }
-                            bar.set_fraction((percent / 100.0).min(1.0));
                         }
-                        if !desc.is_empty() {
-                            label_status.set_text(&desc);
-                        }
-                    }
-                }
-                "Finished" => {
-                    if let Ok((sid, finished_ok, detail)) =
-                        msg.body().deserialize::<(u32, bool, String)>()
-                        && sid == id
-                    {
-                        ok = finished_ok;
-                        if let Some(pid) = pulse_id.take() {
-                            pid.remove();
-                        }
-                        bar.set_fraction(1.0);
-                        if let Some(b) = &close_btn {
-                            b.set_sensitive(true);
-                        }
-                        if ok {
-                            statusbar.push(ctx, &complete);
-                            if autoclose.is_active() {
-                                dialog.destroy();
+                        "ProgressChanged" => {
+                            if let Ok((sid, percent, desc)) =
+                                msg.body().deserialize::<(u32, f64, String)>()
+                                && sid == id
+                            {
+                                if percent < 0.0 {
+                                    bar.pulse();
+                                } else {
+                                    // 首个数值进度:停 pulse 定时器,改精确显示
+                                    if let Some(pid) = pulse_id.take() {
+                                        pid.remove();
+                                    }
+                                    bar.set_fraction((percent / 100.0).min(1.0));
+                                }
+                                if !desc.is_empty() {
+                                    label_status.set_text(&desc);
+                                }
                             }
-                        } else {
-                            statusbar.push(ctx, &failed);
-                            show_alert(
-                                &window,
-                                AlertKind::Error,
-                                &gettext("fdebm error"),
-                                Some(&detail),
-                            );
                         }
-                        window.set_sensitive(true);
-                        break;
+                        "Finished" => {
+                            if let Ok((sid, finished_ok, detail)) =
+                                msg.body().deserialize::<(u32, bool, String)>()
+                                && sid == id
+                            {
+                                ok = finished_ok;
+                                finished = true;
+                                if let Some(pid) = pulse_id.take() {
+                                    pid.remove();
+                                }
+                                bar.set_fraction(1.0);
+                                if ok {
+                                    statusbar.push(ctx, &complete);
+                                    if autoclose.is_active() {
+                                        dialog.destroy();
+                                    }
+                                } else {
+                                    statusbar.push(ctx, &failed);
+                                    show_alert(
+                                        &window,
+                                        AlertKind::Error,
+                                        &gettext("fdebm error"),
+                                        Some(&detail),
+                                    );
+                                }
+                                window.set_sensitive(true);
+                                break;
+                            }
+                        }
+                        _ => {}
                     }
                 }
-                _ => {}
             }
         }
 
-        // 信号流中断且未收到 Finished(守护进程退出/总线断开):兜底恢复
-        if pulse_id.is_some() {
+        // 用户运行中关闭:取消事务并立即恢复界面。cancel 以独立任务发射、
+        // 不等守护进程应答(守护进程可能已挂起,等待会让"关闭"再次卡死);
+        // 对话框已在响应回调中销毁,不再触碰其子控件
+        if user_closed && !finished {
+            let proxy_cancel = proxy.clone();
+            glib::spawn_future_local(async move {
+                let _ = proxy_cancel.cancel(id).await;
+            });
             if let Some(pid) = pulse_id.take() {
                 pid.remove();
             }
-            if let Some(b) = &close_btn {
-                b.set_sensitive(true);
+            window.set_sensitive(true);
+            statusbar.push(ctx, gettext("operation cancelled").as_str());
+            return;
+        }
+
+        // 信号流中断且未收到 Finished(守护进程退出/总线断开):兜底恢复
+        if !finished {
+            if let Some(pid) = pulse_id.take() {
+                pid.remove();
             }
             window.set_sensitive(true);
             if !ok {
                 statusbar.push(ctx, &failed);
             }
+            return;
         }
 
-        // 成功后重分析刷新(旧版 set_deb 复查行为:安装后状态即时更新)
+        // 成功后重分析刷新:安装后状态即时更新
         if ok && let Some(f) = gui_reload.current_file.borrow().clone() {
             load_deb(&gui_reload, &f);
         }
     });
+}
+
+/// conffile 预检决策对话框:列出本地已修改且新包版本不同的配置文件,
+/// 由用户选择覆盖策略。Some("keep"/"replace") = 继续安装,None = 放弃
+fn confirm_conffiles(parent: &gtk::Window, conflicts: &[(String, String)]) -> Option<String> {
+    let list = conflicts
+        .iter()
+        .map(|(_, p)| p.as_str())
+        .collect::<Vec<_>>()
+        .join("\n");
+    let dlg = MessageDialog::builder()
+        .transient_for(parent)
+        .modal(true)
+        .message_type(MessageType::Question)
+        .text(gettext("Modified configuration files").as_str())
+        .secondary_text(tf(
+            "The following configuration files have been modified locally and the new package ships different versions:",
+            &[&list],
+        ))
+        .build();
+    dlg.add_button(&gettext("Keep _my version"), ResponseType::Yes);
+    dlg.add_button(&gettext("Use the package's _new version"), ResponseType::No);
+    dlg.add_button(&gettext("_Cancel"), ResponseType::Cancel);
+
+    let (tx, rx) = std_mpsc::channel::<Option<String>>();
+    dlg.connect_response(move |d, r| {
+        let verdict = match r {
+            ResponseType::Yes => Some("keep".to_string()),
+            ResponseType::No => Some("replace".to_string()),
+            _ => None,
+        };
+        let _ = tx.send(verdict);
+        d.destroy();
+    });
+    dlg.present();
+    loop {
+        glib::MainContext::default().iteration(true);
+        if let Ok(v) = rx.try_recv() {
+            return v;
+        }
+    }
 }
 
 fn on_install_clicked(gui: &Rc<MainWindow>) {
@@ -1127,7 +1227,7 @@ fn on_install_clicked(gui: &Rc<MainWindow>) {
     if let Some(c) = gui.changes.borrow().as_ref()
         && !c.unauthenticated.is_empty()
     {
-        // 旧版 dpkg_action 的 unauthenticated 确认
+        // 未认证包安装前确认
         let ui = GtkUi {
             parent: gui.window.clone().upcast(),
         };
@@ -1143,6 +1243,16 @@ fn on_install_clicked(gui: &Rc<MainWindow>) {
             _ => return,
         }
     }
+    // conffile 预检:本地已修改且新包版本不同的配置,安装前定夺覆盖策略
+    let conflicts = gui.conffiles.borrow().clone();
+    let conf_policy = if conflicts.is_empty() {
+        String::new()
+    } else {
+        match confirm_conffiles(gui.window.upcast_ref(), &conflicts) {
+            Some(p) => p,
+            None => return,
+        }
+    };
     let file = gui.current_file.borrow().clone().unwrap_or_default();
     gui.statusbar.push(
         gui.status_ctx,
@@ -1153,7 +1263,7 @@ fn on_install_clicked(gui: &Rc<MainWindow>) {
         &gettext("Installing package file..."),
         gettext("Installation complete").to_string(),
         gettext("Failed to install package file").to_string(),
-        TxnRequest::Install { file },
+        TxnRequest::Install { file, conf_policy },
     );
 }
 
@@ -1170,8 +1280,7 @@ fn on_remove_clicked(gui: &Rc<MainWindow>) {
     };
     gui.statusbar
         .push(gui.status_ctx, gettext("Removing package...").as_str());
-    // 旧版 dpkg_action(install=False) 经 apt 提交(级联处理依赖);
-    // 管道版 dpkg -r 单包卸载(级联偏离见 daemon/txn.rs 注释)
+    // dpkg -r 单包卸载;反向依赖会阻止卸载并报错(由输出呈现)
     run_txn_dialog(
         gui,
         &gettext("Removing package..."),

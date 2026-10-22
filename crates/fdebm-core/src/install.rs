@@ -4,8 +4,8 @@
 //! - 需先卸载的冲突包:`dpkg --auto-deconfigure -r <names>`(源自求解器)
 //! - 依赖 deb + 本地 deb 单次批量:`dpkg --auto-deconfigure -i <debs>`,
 //!   dpkg 自行处理解包/配置顺序与 Pre-Depends
-//! - `DEBIAN_FRONTEND=noninteractive`:守护进程无 tty,conffile 提示不可
-//!   交互(与旧版 VTE 内嵌终端的交互能力的偏离,文档化)
+//! - conffile 提示:GUI 预检阶段由用户决策([`ConfPolicy`]),安装时以
+//!   `--force-confold/--force-confnew` 确定性执行;守护进程无 tty,不透传交互
 //! - 进度:子进程输出逐行转发 [`InstallProgress::output_line`]
 //!   (stdout/stderr 双 reader 线程合并,避免管道缓冲死锁)
 //! - 取消:[`CancelHandle`] 标志位 + 对子进程组发 SIGTERM
@@ -20,6 +20,37 @@ use std::sync::mpsc;
 use crate::error::FdebmError;
 use crate::i18n::gettext;
 use crate::ui::{AlertKind, InstallProgress, Ui};
+
+/// conffile 覆盖策略(GUI 预检对话框的用户决策;D-Bus 上以字符串传递)
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum ConfPolicy {
+    /// 无冲突:dpkg 默认语义(未修改的 conffile 静默升级)
+    #[default]
+    Default,
+    /// 保留本地已修改版本(新版本落为 <file>.dpkg-dist)
+    Keep,
+    /// 使用包携带的新版本(本地版本备份为 <file>.dpkg-old)
+    Replace,
+}
+
+impl ConfPolicy {
+    /// D-Bus 字符串(""/"keep"/"replace")→ 策略
+    pub fn from_arg(s: &str) -> Self {
+        match s {
+            "keep" => Self::Keep,
+            "replace" => Self::Replace,
+            _ => Self::Default,
+        }
+    }
+
+    fn dpkg_arg(self) -> Option<&'static str> {
+        match self {
+            Self::Default => None,
+            Self::Keep => Some("--force-confold"),
+            Self::Replace => Some("--force-confnew"),
+        }
+    }
+}
 
 /// 取消句柄:跨线程共享;cancel() 置位并向当前子进程组发 SIGTERM
 #[derive(Default)]
@@ -63,6 +94,8 @@ pub struct InstallBatch {
     pub dep_debs: Vec<PathBuf>,
     /// 需先卸载的冲突包(求解器给出的 remove 集)
     pub remove: Vec<String>,
+    /// conffile 覆盖策略(GUI 预检决策)
+    pub conf_policy: ConfPolicy,
 }
 
 /// 执行安装,返回 dpkg 退出码。unauthenticated 的确认由前端负责。
@@ -98,7 +131,10 @@ pub fn install(
     for deb in &batch.dep_debs {
         cmd.arg(deb);
     }
-    // 守护进程无 tty:conffile 提示按默认策略(保留旧配置)执行
+    if let Some(arg) = batch.conf_policy.dpkg_arg() {
+        cmd.arg(arg);
+    }
+    // 守护进程无 tty:其余提示(noninteractive)按默认策略执行
     cmd.env("DEBIAN_FRONTEND", "noninteractive");
     let code = run_dpkg(cmd, progress, cancel)?;
     if code != 0 {

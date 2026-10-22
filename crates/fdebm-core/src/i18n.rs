@@ -18,8 +18,7 @@ use std::ffi::OsString;
 use gettextrs::{LocaleCategory, bindtextdomain, setlocale, textdomain};
 pub use gettextrs::{gettext, ngettext};
 
-/// 消息目录域名(独立于旧版 gdebi,避免与其 gdebi.mo 装包冲突;
-/// msgid 仍与旧版一致,po/*.po 无需迁移)
+/// 消息目录域名(独立命名,避免与其他 deb 安装器的 .mo 装包路径冲突)
 pub const DOMAIN: &str = "fdebm";
 
 /// 未显式指定时的系统安装域
@@ -41,7 +40,7 @@ pub fn init() {
 }
 
 /// 翻译带 `{0}`/`{1}` 编号占位符的模板并代入参数。
-/// 未命中翻译时模板即英文原文,代入后与旧版文案一致。
+/// 未命中翻译时模板即英文原文。
 pub fn tf(template: &str, args: &[&str]) -> String {
     let mut s = gettext(template);
     for (i, arg) in args.iter().enumerate() {

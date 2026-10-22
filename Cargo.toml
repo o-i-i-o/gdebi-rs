@@ -23,6 +23,8 @@ varisat = "0.2"
 ureq = { version = "2", default-features = true }
 # 下载完整性校验
 sha2 = "0.10"
+# conffile 预检(dpkg status 记录的装包时 md5 比对)
+md-5 = "0.10"
 # apt 列表解压(Packages 索引的四种压缩格式,均纯 Rust 后端)
 lz4_flex = "0.11"
 lzma-rs = "0.3"

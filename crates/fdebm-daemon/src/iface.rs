@@ -2,8 +2,9 @@
 //!
 //! 方法:
 //! - AnalyzeLocalFile(s path, as apt_opts) → (b installable, s failure,
-//!   as install, as remove, as unauthenticated, s installed_version)
-//! - InstallLocalFile(s path, as apt_opts) → u id
+//!   as install, as remove, as unauthenticated, s installed_version,
+//!   a(ss) conffile_conflicts)
+//! - InstallLocalFile(s path, as apt_opts, s conf_policy) → u id
 //! - RemovePackage(s name) → u id
 //! - Cancel(u id) → b accepted
 //! - GetTransactionStatus(u id) → (s state, s error)
@@ -60,6 +61,7 @@ impl FdebmIface {
         #[zbus(connection)] conn: &zbus::Connection,
         path: String,
         apt_opts: Vec<String>,
+        conf_policy: String,
     ) -> zbus::fdo::Result<u32> {
         let caller = Self::caller(&header)
             .ok_or_else(|| zbus::fdo::Error::Failed("unknown caller".to_string()))?;
@@ -68,6 +70,7 @@ impl FdebmIface {
             conn,
             path,
             apt_opts,
+            conf_policy,
             caller,
         ))
     }

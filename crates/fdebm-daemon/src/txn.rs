@@ -2,7 +2,7 @@
 //!
 //! 状态机(对应 readme:分析中→等待授权→下载中→安装中→完成/失败):
 //! analyzing → waiting-auth → downloading → installing → done | failed | cancelled
-//! 信号契约(org.gdebi.Rs):
+//! 信号契约(org.fdebm):
 //! - TransactionEvent(u32 id, String state)
 //! - OutputLine(u32 id, String line)
 //! - ProgressChanged(u32 id, f64 percent /*-1=pulse*/, String description)
@@ -14,17 +14,17 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
 
-use gdebi_core::download::{self, DownloadProgress};
-use gdebi_core::i18n::tf;
-use gdebi_core::install::{self, CancelHandle, InstallBatch};
-use gdebi_core::solver::{self, Verdict};
-use gdebi_core::sysstate::SysState;
-use gdebi_core::ui::{AlertKind, InstallProgress, Ui};
-use gdebi_core::{DebFile, GdebiError};
+use fdebm_core::download::{self, DownloadProgress};
+use fdebm_core::i18n::tf;
+use fdebm_core::install::{self, CancelHandle, InstallBatch};
+use fdebm_core::solver::{self, Verdict};
+use fdebm_core::sysstate::SysState;
+use fdebm_core::ui::{AlertKind, InstallProgress, Ui};
+use fdebm_core::{DebFile, FdebmError};
 
 use crate::polkit;
 
-pub const ACTIONS: &str = "org.gdebi.Rs";
+pub const ACTIONS: &str = "org.fdebm";
 
 pub const ANALYZING: &str = "analyzing";
 pub const WAITING_AUTH: &str = "waiting-auth";
@@ -91,12 +91,12 @@ impl Manager {
     }
 
     /// 系统状态缓存:dpkg/status 与 lists 目录 mtime 不变时复用
-    fn sys_state(&self, apt_opts: &[String]) -> Result<Arc<SysState>, GdebiError> {
+    fn sys_state(&self, apt_opts: &[String]) -> Result<Arc<SysState>, FdebmError> {
         if apt_opts.is_empty() {
-            let st_mtime = std::fs::metadata(gdebi_core::sysstate::DPKG_STATUS)
+            let st_mtime = std::fs::metadata(fdebm_core::sysstate::DPKG_STATUS)
                 .and_then(|m| m.modified())
                 .unwrap_or(SystemTime::UNIX_EPOCH);
-            let li_mtime = std::fs::metadata(gdebi_core::sysstate::LISTS_DIR)
+            let li_mtime = std::fs::metadata(fdebm_core::sysstate::LISTS_DIR)
                 .and_then(|m| m.modified())
                 .unwrap_or(SystemTime::UNIX_EPOCH);
             let mut cache = self.sys_cache.lock().unwrap();
@@ -119,12 +119,12 @@ impl Manager {
 // 信号发射
 // ---------------------------------------------------------------------------
 
-/// 统一信号发射:路径/接口固定为 /org/gdebi/Rs @ org.gdebi.Rs
+/// 统一信号发射:路径/接口固定为 /org/fdebm @ org.fdebm
 fn emit<T>(conn: &zbus::Connection, signal: &str, body: &T)
 where
     T: serde::ser::Serialize + zbus::zvariant::DynamicType,
 {
-    let path = zbus::zvariant::ObjectPath::try_from("/org/gdebi/Rs").unwrap();
+    let path = zbus::zvariant::ObjectPath::try_from("/org/fdebm").unwrap();
     let iface = zbus::names::InterfaceName::try_from(ACTIONS).unwrap();
     let _ = async_io::block_on(conn.emit_signal(None::<&str>, &path, &iface, signal, body));
 }
@@ -194,8 +194,8 @@ pub fn analyze(
     manager: &Arc<Manager>,
     path: &str,
     apt_opts: &[String],
-) -> Result<gdebi_core::AnalyzeResult, String> {
-    let run = || -> Result<_, GdebiError> {
+) -> Result<fdebm_core::AnalyzeResult, String> {
+    let run = || -> Result<_, FdebmError> {
         let deb = DebFile::open(path)?;
         let sys = manager.sys_state(apt_opts)?;
         let name = deb.field_trimmed("Package").unwrap_or("").to_string();
@@ -278,7 +278,7 @@ fn run_install(
     let auth = async_io::block_on(polkit::check_authorized(
         conn,
         caller,
-        "org.gdebi.rs.install-local-package",
+        "org.fdebm.install-local-package",
     ));
     match auth {
         Ok(true) => {}
@@ -302,7 +302,7 @@ fn run_install(
         };
         if let Err(e) = download::download_all(&resolution.downloads, &dp, &txn.cancel) {
             let (state, ok) = match e {
-                GdebiError::Cancelled => (CANCELLED, false),
+                FdebmError::Cancelled => (CANCELLED, false),
                 _ => (FAILED, false),
             };
             finalize(conn, txn, state, &e.to_string(), id, ok);
@@ -342,7 +342,7 @@ fn run_install(
         ),
         Err(e) => {
             let (state, ok) = match e {
-                GdebiError::Cancelled => (CANCELLED, false),
+                FdebmError::Cancelled => (CANCELLED, false),
                 _ => (FAILED, false),
             };
             finalize(conn, txn, state, &e.to_string(), id, ok);
@@ -364,7 +364,7 @@ fn run_remove(
     let auth = async_io::block_on(polkit::check_authorized(
         conn,
         caller,
-        "org.gdebi.rs.remove-package",
+        "org.fdebm.remove-package",
     ));
     match auth {
         Ok(true) => {}
@@ -399,7 +399,7 @@ fn run_remove(
         ),
         Err(e) => {
             let (state, ok) = match e {
-                GdebiError::Cancelled => (CANCELLED, false),
+                FdebmError::Cancelled => (CANCELLED, false),
                 _ => (FAILED, false),
             };
             finalize(conn, txn, state, &e.to_string(), id, ok);
@@ -452,7 +452,7 @@ struct TxnUi {
 }
 
 impl Ui for TxnUi {
-    fn alert(&self, kind: AlertKind, header: &str, body: Option<&str>) -> Result<(), GdebiError> {
+    fn alert(&self, kind: AlertKind, header: &str, body: Option<&str>) -> Result<(), FdebmError> {
         let kind = match kind {
             AlertKind::Error => "error",
             AlertKind::Warning => "warning",
@@ -472,7 +472,7 @@ impl Ui for TxnUi {
         Ok(())
     }
 
-    fn confirm(&self, _header: &str, _body: Option<&str>) -> Result<bool, GdebiError> {
+    fn confirm(&self, _header: &str, _body: Option<&str>) -> Result<bool, FdebmError> {
         Ok(false)
     }
 }

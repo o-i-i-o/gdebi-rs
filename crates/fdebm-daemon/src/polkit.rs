@@ -2,7 +2,7 @@
 //! CheckAuthorization;主体为发起 D-Bus 调用的总线名,交互式认证由
 //! 用户会话中的 polkit agent(图形密码框)呈现。
 //!
-//! 策略文件:data/polkit/org.gdebi.rs.policy(analyze 免授权,由方法
+//! 策略文件:data/polkit/org.fdebm.policy(analyze 免授权,由方法
 //! 本身的只读性质保证;install/remove 需 auth_admin_keep)。
 
 use std::collections::HashMap;

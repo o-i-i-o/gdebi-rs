@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use crate::control::parse_control;
-use crate::error::GdebiError;
+use crate::error::FdebmError;
 
 /// 已打开的 .deb:control 内容与解析结果
 pub struct DebFile {
@@ -23,10 +23,10 @@ pub struct DebFile {
 }
 
 impl DebFile {
-    pub fn open(path: impl AsRef<Path>) -> Result<Self, GdebiError> {
+    pub fn open(path: impl AsRef<Path>) -> Result<Self, FdebmError> {
         let path = path.as_ref();
         let file = File::open(path)
-            .map_err(|e| GdebiError::OpenFailed(path.to_path_buf(), e.to_string()))?;
+            .map_err(|e| FdebmError::OpenFailed(path.to_path_buf(), e.to_string()))?;
         let mut archive = ar::Archive::new(file);
 
         let mut control_tar: Option<Vec<u8>> = None;
@@ -42,7 +42,7 @@ impl DebFile {
             }
         }
 
-        let control_tar = control_tar.ok_or_else(|| GdebiError::NotADeb(path.to_path_buf()))?;
+        let control_tar = control_tar.ok_or_else(|| FdebmError::NotADeb(path.to_path_buf()))?;
         let control_bytes = extract_control_bytes(&control_tar)?;
         let paragraphs = parse_control(&String::from_utf8_lossy(&control_bytes));
         Ok(Self {
@@ -73,7 +73,7 @@ impl DebFile {
     }
 
     /// control.tar 成员名列表(排序;对应旧版 control_filelist)
-    pub fn control_filelist(&self) -> Result<Vec<String>, GdebiError> {
+    pub fn control_filelist(&self) -> Result<Vec<String>, FdebmError> {
         let mut out = Vec::new();
         for entry in tar::Archive::new(self.control_reader()?).entries()? {
             let entry = entry?;
@@ -84,7 +84,7 @@ impl DebFile {
     }
 
     /// data.tar 成员名列表(按 tar 流顺序;对应旧版 filelist)
-    pub fn data_filelist(&self) -> Result<Vec<String>, GdebiError> {
+    pub fn data_filelist(&self) -> Result<Vec<String>, FdebmError> {
         let child = Command::new("dpkg-deb")
             .arg("--fsys-tarfile")
             .arg(&self.path)
@@ -99,7 +99,7 @@ impl DebFile {
     }
 
     /// control.tar 内单文件内容(name 为去前缀后的展示名)
-    pub fn control_content(&self, name: &str) -> Result<Vec<u8>, GdebiError> {
+    pub fn control_content(&self, name: &str) -> Result<Vec<u8>, FdebmError> {
         for entry in tar::Archive::new(self.control_reader()?).entries()? {
             let mut entry = entry?;
             if normalize_member(&entry.path()?.to_string_lossy()) == name {
@@ -112,7 +112,7 @@ impl DebFile {
     }
 
     /// data.tar 内单文件内容(name 为去前缀后的展示名)
-    pub fn data_content(&self, name: &str) -> Result<Vec<u8>, GdebiError> {
+    pub fn data_content(&self, name: &str) -> Result<Vec<u8>, FdebmError> {
         let child = Command::new("dpkg-deb")
             .arg("--fsys-tarfile")
             .arg(&self.path)
@@ -129,7 +129,7 @@ impl DebFile {
         Ok(Vec::new())
     }
 
-    fn control_reader(&self) -> Result<Box<dyn Read + '_>, GdebiError> {
+    fn control_reader(&self) -> Result<Box<dyn Read + '_>, FdebmError> {
         if self.control_tar.starts_with(&[0x1f, 0x8b]) {
             Ok(Box::new(flate2::read::GzDecoder::new(Cursor::new(
                 &self.control_tar,
@@ -138,9 +138,9 @@ impl DebFile {
             .control_tar
             .starts_with(&[0xfd, 0x37, 0x7a, 0x58, 0x5a, 0x00])
         {
-            Err(GdebiError::UnsupportedCompression("xz"))
+            Err(FdebmError::UnsupportedCompression("xz"))
         } else if self.control_tar.starts_with(&[0x28, 0xb5, 0x2f, 0xfd]) {
-            Err(GdebiError::UnsupportedCompression("zstd"))
+            Err(FdebmError::UnsupportedCompression("zstd"))
         } else {
             Ok(Box::new(Cursor::new(&self.control_tar)))
         }
@@ -158,13 +158,13 @@ fn normalize_member(name: &str) -> String {
 }
 
 /// control.tar 原始字节 → 解压后的 control 文件字节
-fn extract_control_bytes(data: &[u8]) -> Result<Vec<u8>, GdebiError> {
+fn extract_control_bytes(data: &[u8]) -> Result<Vec<u8>, FdebmError> {
     let reader: Box<dyn Read> = if data.starts_with(&[0x1f, 0x8b]) {
         Box::new(flate2::read::GzDecoder::new(Cursor::new(data)))
     } else if data.starts_with(&[0xfd, 0x37, 0x7a, 0x58, 0x5a, 0x00]) {
-        return Err(GdebiError::UnsupportedCompression("xz"));
+        return Err(FdebmError::UnsupportedCompression("xz"));
     } else if data.starts_with(&[0x28, 0xb5, 0x2f, 0xfd]) {
-        return Err(GdebiError::UnsupportedCompression("zstd"));
+        return Err(FdebmError::UnsupportedCompression("zstd"));
     } else {
         Box::new(Cursor::new(data))
     };
@@ -178,7 +178,7 @@ fn extract_control_bytes(data: &[u8]) -> Result<Vec<u8>, GdebiError> {
             return Ok(bytes);
         }
     }
-    Err(GdebiError::MissingControl)
+    Err(FdebmError::MissingControl)
 }
 
 #[cfg(test)]

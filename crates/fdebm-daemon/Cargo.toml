@@ -1,16 +1,16 @@
 [package]
-name = "gdebi-daemon"
+name = "fdebm-daemon"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "gdebi-rs privileged D-Bus daemon (analyze/install/remove local debs)"
+description = "fdebm privileged D-Bus daemon (analyze/install/remove local debs)"
 
 [[bin]]
-name = "gdebi-daemon"
+name = "fdebm-daemon"
 path = "src/main.rs"
 
 [dependencies]
-gdebi-core.workspace = true
+fdebm-core.workspace = true
 zbus.workspace = true
 async-io.workspace = true
 async-channel.workspace = true

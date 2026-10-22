@@ -63,6 +63,6 @@ jobs:
       - name: 上传产物
         uses: actions/upload-artifact@v4
         with:
-          name: gdebi-rs-deb
+          name: fdebm-deb
           path: dist/*.deb
           if-no-files-found: error

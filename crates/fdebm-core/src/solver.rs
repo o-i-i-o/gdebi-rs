@@ -19,7 +19,7 @@ use std::path::PathBuf;
 use varisat::{ExtendFormula, Lit, Solver};
 
 use crate::debfile::DebFile;
-use crate::error::GdebiError;
+use crate::error::FdebmError;
 use crate::i18n::{gettext, tf};
 use crate::sysstate::{Dep, Pkg, SysState, base_name};
 use crate::version::cmp_version;
@@ -224,7 +224,7 @@ fn ver_matches(v: &str, oper: &str, w: &str) -> bool {
 }
 
 /// 主入口:在给定系统状态上求解安装 deb(不修改 sys)。
-pub fn resolve(sys: &SysState, deb: &DebFile) -> Result<Verdict, GdebiError> {
+pub fn resolve(sys: &SysState, deb: &DebFile) -> Result<Verdict, FdebmError> {
     let name = deb.field_trimmed("Package").unwrap_or("").to_string();
     let version = deb.field_trimmed("Version").unwrap_or("").to_string();
     let arch = deb

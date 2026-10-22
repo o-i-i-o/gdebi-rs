@@ -1,12 +1,12 @@
-//! gdebi-daemon:特权 D-Bus 守护进程(纯 Rust 管道的执行体)。
+//! fdebm-daemon:特权 D-Bus 守护进程(纯 Rust 管道的执行体)。
 //!
 //! 架构(crates/readme.md):GUI 永不 root;本守护进程是唯一"实干者",
-//! 以 root 注册系统总线 org.gdebi.Rs,经 Polkit 授权后执行:
+//! 以 root 注册系统总线 org.fdebm,经 Polkit 授权后执行:
 //! - AnalyzeLocalFile:解析 + 纯 Rust SAT 求解(只读,免授权)
 //! - InstallLocalFile / RemovePackage:事务(下载 → dpkg),发进度信号
 //!
 //! 部署:data/dbus、data/polkit 三个文件(见各文件头注释)。
-//! 开发期:sudo ./target/debug/gdebi-daemon 前台运行。
+//! 开发期:sudo ./target/debug/fdebm-daemon 前台运行。
 
 mod iface;
 mod polkit;
@@ -14,15 +14,15 @@ mod txn;
 
 use zbus::connection::Builder;
 
-const BUS_NAME: &str = "org.gdebi.Rs";
-const OBJECT_PATH: &str = "/org/gdebi/Rs";
+const BUS_NAME: &str = "org.fdebm";
+const OBJECT_PATH: &str = "/org/fdebm";
 
 fn main() {
     let conn = async_io::block_on(async {
         let manager = txn::Manager::new_shared();
         Builder::system()?
             .name(BUS_NAME)?
-            .serve_at(OBJECT_PATH, iface::GdebiIface::new(manager))?
+            .serve_at(OBJECT_PATH, iface::FdebmIface::new(manager))?
             .build()
             .await
     });
@@ -30,13 +30,13 @@ fn main() {
     let _conn = match conn {
         Ok(c) => c,
         Err(e) => {
-            eprintln!("gdebi-daemon: cannot start on system bus: {e}");
+            eprintln!("fdebm-daemon: cannot start on system bus: {e}");
             eprintln!("hint: install data/dbus/*.conf + *.service and data/polkit/*.policy,");
-            eprintln!("      or run `sudo gdebi-daemon` in the foreground for development.");
+            eprintln!("      or run `sudo fdebm-daemon` in the foreground for development.");
             std::process::exit(1);
         }
     };
-    eprintln!("gdebi-daemon: serving {BUS_NAME} at {OBJECT_PATH}");
+    eprintln!("fdebm-daemon: serving {BUS_NAME} at {OBJECT_PATH}");
     loop {
         std::thread::park();
     }

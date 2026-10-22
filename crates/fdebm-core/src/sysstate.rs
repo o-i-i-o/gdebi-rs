@@ -14,7 +14,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use crate::control::parse_control;
-use crate::error::GdebiError;
+use crate::error::FdebmError;
 use crate::version::cmp_version;
 
 /// dpkg status 的标准路径
@@ -107,7 +107,7 @@ pub struct SysState {
 impl SysState {
     /// 加载系统状态(dpkg 状态 + indextargets 枚举 + 列表解析)。
     /// 本地 deb 不入缓存,由求解器作为独立单元注入(见 solver::resolve)。
-    pub fn load(apt_opts: &[String]) -> Result<Self, GdebiError> {
+    pub fn load(apt_opts: &[String]) -> Result<Self, FdebmError> {
         let native_arch = run_line(Command::new("dpkg").arg("--print-architecture"))?;
         let foreign_arches = run_line(Command::new("dpkg").arg("--print-foreign-architectures"))?
             .lines()
@@ -233,7 +233,7 @@ pub fn pkg_from_fields<'a>(
 }
 
 /// 解析 /var/lib/dpkg/status → 已安装包列表
-pub fn load_installed(native_arch: &str) -> Result<Vec<Pkg>, GdebiError> {
+pub fn load_installed(native_arch: &str) -> Result<Vec<Pkg>, FdebmError> {
     let text = std::fs::read_to_string(DPKG_STATUS)?;
     let mut out = Vec::new();
     for para in parse_control(&text) {
@@ -263,7 +263,7 @@ fn status_installed(status: &str) -> bool {
 }
 
 /// `apt-get indextargets` 枚举(仅元数据;子进程输出按 C locale 解析)
-fn indextargets(apt_opts: &[String]) -> Result<Vec<IndexTarget>, GdebiError> {
+fn indextargets(apt_opts: &[String]) -> Result<Vec<IndexTarget>, FdebmError> {
     let mut cmd = Command::new("apt-get");
     cmd.arg("indextargets");
     for o in apt_opts {
@@ -328,7 +328,7 @@ fn parse_packages_file(
     native_arch: &str,
     repo: &Repo,
     out: &mut Vec<Candidate>,
-) -> Result<(), GdebiError> {
+) -> Result<(), FdebmError> {
     let text = decompress_to_string(path)?;
     for para in parse_control(&text) {
         let Some(pkg) = pkg_from_fields(|n| para.get(n), native_arch) else {
@@ -350,10 +350,10 @@ fn parse_packages_file(
 }
 
 /// 按扩展名/魔数解压索引文件为文本(lz4/xz/zstd/gz/无压缩)
-fn decompress_to_string(path: &Path) -> Result<String, GdebiError> {
+fn decompress_to_string(path: &Path) -> Result<String, FdebmError> {
     let raw = std::fs::read(path)?;
     let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
-    let decomp_err = |e: String| GdebiError::ListDecompress(path.display().to_string(), e);
+    let decomp_err = |e: String| FdebmError::ListDecompress(path.display().to_string(), e);
     let bytes: Vec<u8> = if name.ends_with(".lz4") {
         let mut out = Vec::new();
         lz4_flex::frame::FrameDecoder::new(&raw[..])
@@ -434,7 +434,7 @@ pub fn base_name(name: &str) -> &str {
     name.split(':').next().unwrap_or(name)
 }
 
-fn run_captured(cmd: &mut Command) -> Result<(String, bool), GdebiError> {
+fn run_captured(cmd: &mut Command) -> Result<(String, bool), FdebmError> {
     let out = cmd.env("LC_ALL", "C").output()?;
     Ok((
         String::from_utf8_lossy(&out.stdout).into_owned(),
@@ -442,7 +442,7 @@ fn run_captured(cmd: &mut Command) -> Result<(String, bool), GdebiError> {
     ))
 }
 
-fn run_line(cmd: &mut Command) -> Result<String, GdebiError> {
+fn run_line(cmd: &mut Command) -> Result<String, FdebmError> {
     Ok(run_captured(cmd)?.0.trim().to_string())
 }
 
@@ -518,7 +518,7 @@ mod tests {
         // 未压缩 Packages 索引段落 → Candidate(Filename/SHA256/Size 提取)
         let dir = std::env::temp_dir();
         let path = dir.join(format!(
-            "gdebi-rs-test_{}_dists_noble_main_binary-amd64_Packages",
+            "fdebm-test_{}_dists_noble_main_binary-amd64_Packages",
             std::process::id()
         ));
         std::fs::write(

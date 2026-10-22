@@ -1,6 +1,7 @@
 [encoding: UTF-8]
-crates/gdebi-core/src/depcheck.rs
-crates/gdebi-core/src/error.rs
-crates/gdebi-core/src/flow.rs
-crates/gdebi-core/src/install.rs
-crates/gdebi-gtk/src/gtk_app.rs
+crates/fdebm-core/src/error.rs
+crates/fdebm-core/src/flow.rs
+crates/fdebm-core/src/install.rs
+crates/fdebm-core/src/solver.rs
+crates/fdebm-daemon/src/txn.rs
+crates/fdebm-gtk/src/gtk_app.rs

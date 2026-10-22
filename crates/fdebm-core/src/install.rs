@@ -17,7 +17,7 @@ use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
 
-use crate::error::GdebiError;
+use crate::error::FdebmError;
 use crate::i18n::gettext;
 use crate::ui::{AlertKind, InstallProgress, Ui};
 
@@ -71,9 +71,9 @@ pub fn install(
     progress: &dyn InstallProgress,
     cancel: &CancelHandle,
     batch: &InstallBatch,
-) -> Result<i32, GdebiError> {
+) -> Result<i32, FdebmError> {
     if cancel.is_cancelled() {
-        return Err(GdebiError::Cancelled);
+        return Err(FdebmError::Cancelled);
     }
 
     if !batch.remove.is_empty() {
@@ -87,7 +87,7 @@ pub fn install(
             return Ok(1);
         }
         if cancel.is_cancelled() {
-            return Err(GdebiError::Cancelled);
+            return Err(FdebmError::Cancelled);
         }
     }
 
@@ -113,9 +113,9 @@ pub fn remove(
     progress: &dyn InstallProgress,
     cancel: &CancelHandle,
     name: &str,
-) -> Result<i32, GdebiError> {
+) -> Result<i32, FdebmError> {
     if cancel.is_cancelled() {
-        return Err(GdebiError::Cancelled);
+        return Err(FdebmError::Cancelled);
     }
     let mut cmd = Command::new("dpkg");
     cmd.arg("-r").arg(name);
@@ -131,7 +131,7 @@ fn run_dpkg(
     mut cmd: Command,
     progress: &dyn InstallProgress,
     cancel: &CancelHandle,
-) -> Result<i32, GdebiError> {
+) -> Result<i32, FdebmError> {
     use std::os::unix::process::CommandExt as _;
     // spawn 前设独立进程组:cancel() 可对整组 SIGTERM(含维护脚本子进程)
     cmd.process_group(0);
@@ -146,7 +146,7 @@ fn run_dpkg(
     let status = child.wait()?;
     cancel.unregister();
     if cancel.is_cancelled() {
-        return Err(GdebiError::Cancelled);
+        return Err(FdebmError::Cancelled);
     }
     Ok(status.code().unwrap_or(-1))
 }

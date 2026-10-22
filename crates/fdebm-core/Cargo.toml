@@ -1,9 +1,9 @@
 [package]
-name = "gdebi-core"
+name = "fdebm-core"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Local .deb parsing, pure-Rust dependency solving and install orchestration core (Rust rewrite of gdebi)"
+description = "Local .deb parsing, pure-Rust dependency solving and install orchestration core (successor of gdebi's pipeline, fully in Rust)"
 
 [dependencies]
 ar.workspace = true

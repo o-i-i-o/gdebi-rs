@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use crate::i18n::{gettext, tf};
 
 #[derive(Debug)]
-pub enum GdebiError {
+pub enum FdebmError {
     OpenFailed(PathBuf, String),
     NotADeb(PathBuf),
     MissingControl,
@@ -26,13 +26,13 @@ pub enum GdebiError {
     Cancelled,
 }
 
-impl From<io::Error> for GdebiError {
+impl From<io::Error> for FdebmError {
     fn from(e: io::Error) -> Self {
         Self::Io(e)
     }
 }
 
-impl fmt::Display for GdebiError {
+impl fmt::Display for FdebmError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let msg = match self {
             Self::OpenFailed(path, reason) => tf(
@@ -65,7 +65,7 @@ impl fmt::Display for GdebiError {
     }
 }
 
-impl Error for GdebiError {
+impl Error for FdebmError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             Self::Io(e) => Some(e),

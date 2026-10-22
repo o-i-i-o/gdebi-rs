@@ -9,11 +9,11 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use gdebi_core::solver::{Changes, Verdict, resolve};
-use gdebi_core::sysstate::SysState;
-use gdebi_core::{DebFile, GdebiError};
+use fdebm_core::solver::{Changes, Verdict, resolve};
+use fdebm_core::sysstate::SysState;
+use fdebm_core::{DebFile, FdebmError};
 
-/// 仓库根(crates/gdebi-core → gdebi-rs)
+/// 仓库根(crates/fdebm-core → fdebm)
 fn repo_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../..")
@@ -185,10 +185,10 @@ fn changes_lines_consistent() {
     );
 }
 
-/// GdebiError 展示冒烟(错误串英文,保持 gettext msgid 就绪)
+/// FdebmError 展示冒烟(错误串英文,保持 gettext msgid 就绪)
 #[test]
 fn error_messages_in_english() {
     pin_c_locale();
-    let e = GdebiError::MissingControl;
+    let e = FdebmError::MissingControl;
     assert_eq!(e.to_string(), "control file not found in package");
 }

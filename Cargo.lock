@@ -518,6 +518,46 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "da7c62ceae207dd37ea5b845da6a0696c799f85e97da1ab5b7910be3c1c80223"
 
 [[package]]
+name = "fdebm-core"
+version = "0.1.0"
+dependencies = [
+ "ar",
+ "flate2",
+ "gettext-rs",
+ "libc",
+ "lz4_flex",
+ "lzma-rs",
+ "ruzstd",
+ "sha2",
+ "tar",
+ "ureq",
+ "varisat",
+]
+
+[[package]]
+name = "fdebm-daemon"
+version = "0.1.0"
+dependencies = [
+ "async-channel",
+ "async-io",
+ "fdebm-core",
+ "serde",
+ "zbus",
+]
+
+[[package]]
+name = "fdebm-gtk"
+version = "0.1.0"
+dependencies = [
+ "async-channel",
+ "clap",
+ "fdebm-core",
+ "futures-lite",
+ "gtk4",
+ "zbus",
+]
+
+[[package]]
 name = "field-offset"
 version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -636,46 +676,6 @@ dependencies = [
  "futures-task",
  "pin-project-lite",
  "slab",
-]
-
-[[package]]
-name = "gdebi-core"
-version = "0.1.0"
-dependencies = [
- "ar",
- "flate2",
- "gettext-rs",
- "libc",
- "lz4_flex",
- "lzma-rs",
- "ruzstd",
- "sha2",
- "tar",
- "ureq",
- "varisat",
-]
-
-[[package]]
-name = "gdebi-daemon"
-version = "0.1.0"
-dependencies = [
- "async-channel",
- "async-io",
- "gdebi-core",
- "serde",
- "zbus",
-]
-
-[[package]]
-name = "gdebi-gtk"
-version = "0.1.0"
-dependencies = [
- "async-channel",
- "clap",
- "futures-lite",
- "gdebi-core",
- "gtk4",
- "zbus",
 ]
 
 [[package]]

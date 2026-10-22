@@ -1,8 +1,9 @@
-//! gdebi-core:本地 .deb 解析、纯 Rust 依赖求解与安装编排核心(gdebi 的 Rust 重写)。
+//! fdebm-core:本地 .deb 解析、纯 Rust 依赖求解与安装编排核心(fdebm 项目的核心库,
+//! 管道语义源自对旧版 gdebi 的 Rust 重写,现为独立项目)。
 //!
 //! 定位:本程序的目的在于提供 GUI 安装本地 .deb 的体验(纯命令行场景
 //! `apt install ./x.deb` 已原生覆盖,故不设 CLI/KDE 以外的 console 前端)。
-//! 分层:GUI 瘦客户端 → D-Bus 守护进程([`gdebi-daemon`]) → [`flow`] 摘要 →
+//! 分层:GUI 瘦客户端 → D-Bus 守护进程([`fdebm-daemon`]) → [`flow`] 摘要 →
 //! [`ui`] trait 回调 → 解析/求解等纯逻辑。
 //!
 //! 纯 Rust 管道(无 libapt-pkg FFI;系统能力仅经 dpkg-query/dpkg/indextargets
@@ -15,7 +16,7 @@
 //! - [`install`]:dpkg 执行层(批量 -i + 取消句柄),进度经 [`ui::InstallProgress`]
 //!   转发
 //!
-//! [`gdebi-daemon`]: https://github.com/ 载荷分离说明见 crates/gdebi-daemon
+//! [`fdebm-daemon`]: https://github.com/ 载荷分离说明见 crates/fdebm-daemon
 
 mod control;
 
@@ -31,7 +32,7 @@ pub mod ui;
 pub mod version;
 
 pub use debfile::DebFile;
-pub use error::GdebiError;
+pub use error::FdebmError;
 
 /// D-Bus `AnalyzeLocalFile` 返回契约(daemon/gtk 共用,类型别名仅消解
 /// clippy::type_complexity,线型不变):

@@ -3,10 +3,10 @@
 //! 菜单栏(File/Help)+ 左侧信息表(Package/Status)+
 //! 右侧动作按钮列 + Notebook(Description/Details)+ 底部缓存进度条与状态栏 +
 //! 安装/移除进度对话框(Terminal expander + autoclose)。
-//! 文案沿用旧版原文并经 gettext 国际化(域 gdebi,复用旧版 po,见 core::i18n)。
+//! 文案沿用旧版原文并经 gettext 国际化(域 fdebm,复用旧版 po,见 core::i18n)。
 //!
 //! 与旧版架构的差异(crates/readme.md 路线二):本前端永不 root、不做
-//! 依赖求解、不执行 dpkg —— 三者全部委托特权守护进程 org.gdebi.Rs
+//! 依赖求解、不执行 dpkg —— 三者全部委托特权守护进程 org.fdebm
 //! (zbus 纯 Rust 客户端):
 //! - 分析(AnalyzeLocalFile):本地解析 deb 展示元数据/文件树/lintian,
 //!   依赖结论异步取自守护进程(带代际号丢弃过期结果)
@@ -32,15 +32,15 @@ use gtk4::{
     ResponseType, gio, glib,
 };
 
-use gdebi_core::flow::{self, PackageInfo};
-use gdebi_core::i18n;
-use gdebi_core::i18n::{gettext, ngettext, tf};
-use gdebi_core::solver::Changes;
-use gdebi_core::ui::{AlertKind, Ui};
-use gdebi_core::{DebFile, GdebiError};
+use fdebm_core::flow::{self, PackageInfo};
+use fdebm_core::i18n;
+use fdebm_core::i18n::{gettext, ngettext, tf};
+use fdebm_core::solver::Changes;
+use fdebm_core::ui::{AlertKind, Ui};
+use fdebm_core::{DebFile, FdebmError};
 
 #[derive(Parser)]
-#[command(name = "gdebi-rs-gtk", version)]
+#[command(name = "fdebm-gtk", version)]
 pub struct Args {
     /// Set an APT configuration option
     #[arg(short = 'o', long = "option")]
@@ -75,13 +75,13 @@ struct GtkUi {
 }
 
 impl Ui for GtkUi {
-    fn alert(&self, kind: AlertKind, header: &str, body: Option<&str>) -> Result<(), GdebiError> {
+    fn alert(&self, kind: AlertKind, header: &str, body: Option<&str>) -> Result<(), FdebmError> {
         show_alert(&self.parent, kind, header, body);
         Ok(())
     }
 
     /// 模态同步语义:嵌套迭代主循环直至用户响应
-    fn confirm(&self, header: &str, body: Option<&str>) -> Result<bool, GdebiError> {
+    fn confirm(&self, header: &str, body: Option<&str>) -> Result<bool, FdebmError> {
         let (tx, rx) = std_mpsc::channel::<bool>();
         let dlg = MessageDialog::builder()
             .transient_for(&self.parent)
@@ -129,7 +129,7 @@ fn show_alert<W: IsA<gtk::Window>>(parent: &W, kind: AlertKind, header: &str, bo
 }
 
 // ---------------------------------------------------------------------------
-// 守护进程客户端(zbus,系统总线 org.gdebi.Rs)
+// 守护进程客户端(zbus,系统总线 org.fdebm)
 // ---------------------------------------------------------------------------
 
 /// 依赖检查结论(守护进程 AnalyzeLocalFile 返回值)
@@ -141,17 +141,17 @@ struct Analysis {
 }
 
 #[zbus::proxy(
-    interface = "org.gdebi.Rs",
-    default_service = "org.gdebi.Rs",
-    default_path = "/org/gdebi/Rs"
+    interface = "org.fdebm",
+    default_service = "org.fdebm",
+    default_path = "/org/fdebm"
 )]
-trait GdebiRs {
+trait Fdebm {
     /// 只读依赖分析(免 Polkit 授权)
     fn analyze_local_file(
         &self,
         path: &str,
         apt_opts: &[&str],
-    ) -> zbus::Result<gdebi_core::AnalyzeResult>;
+    ) -> zbus::Result<fdebm_core::AnalyzeResult>;
 
     /// 安装事务(授权/下载/dpkg 在守护进程内执行)→ 事务 id
     fn install_local_file(&self, path: &str, apt_opts: &[&str]) -> zbus::Result<u32>;
@@ -168,7 +168,7 @@ async fn daemon() -> Result<zbus::Connection, String> {
 /// 守护进程侧依赖分析(重活在守护进程线程执行,客户端只等结果)
 async fn analyze_via_daemon(opts: &[String], file: &Path) -> Result<Analysis, String> {
     let conn = daemon().await?;
-    let client = GdebiRsProxy::builder(&conn)
+    let client = FdebmProxy::builder(&conn)
         .build()
         .await
         .map_err(|e| e.to_string())?;
@@ -226,12 +226,12 @@ pub fn run() {
     let matches = cmd.get_matches();
     let args = Args::from_arg_matches(&matches).unwrap_or_else(|e| e.exit());
     let app = Application::builder()
-        .application_id("org.debian.gdebi-rs-gtk")
+        .application_id("org.fdebm.gtk")
         .build();
     let action = args.into_action();
     app.connect_activate(move |app| activate(app, action.clone()));
     // 参数已由 clap 解析,不交给 GApplication(位置参数会触发 GFile open 路径)
-    app.run_with_args(&["gdebi-rs-gtk"]);
+    app.run_with_args(&["fdebm-gtk"]);
 }
 
 /// 启动动作上下文:命令行给的文件与 apt 选项
@@ -541,7 +541,7 @@ fn on_file_selected(gui: &MainWindow, sel: &gtk::TreeSelection) {
 /// Included files 页签填充(旧版 set_deb 的文件树部分)
 fn fill_files(gui: &MainWindow, deb: &DebFile) {
     let store = gtk::TreeStore::new(&[glib::Type::STRING]);
-    let res = (|| -> Result<(), GdebiError> {
+    let res = (|| -> Result<(), FdebmError> {
         // 组 0:Package control data;组 1:Upstream data(旧版原文)
         let control_header = store.append(None);
         store.set(&control_header, &[(0, &gettext("Package control data"))]);
@@ -710,7 +710,7 @@ fn setup_actions(app: &Application, gui: &Rc<MainWindow>) {
         let dlg = gtk::AboutDialog::builder()
             .transient_for(&win_about)
             .modal(true)
-            .program_name("gdebi-rs")
+            .program_name("fdebm")
             .version(env!("CARGO_PKG_VERSION"))
             .comments(gettext("simple tool to view and install deb files").as_str())
             .build();
@@ -1016,7 +1016,7 @@ fn run_txn_dialog(
         // 连接 + 订阅 + 发起事务;任一步失败即恢复界面并告警
         let started = async {
             let conn = daemon().await?;
-            let proxy = GdebiRsProxy::builder(&conn)
+            let proxy = FdebmProxy::builder(&conn)
                 .build()
                 .await
                 .map_err(|e| e.to_string())?;

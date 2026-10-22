@@ -1,7 +1,7 @@
 # gettext 工作流(Rust 源码,标准 GNU 流程):
-#   make pot        源码变更后重新提取 po/gdebi.pot(xgettext)
+#   make pot        源码变更后重新提取 po/fdebm.pot(xgettext)
 #   make merge-po   将 pot 合并回各 *.po,保留既有翻译(未精确匹配的标记 fuzzy)
-#   make mo         编译 *.po → locale/<lang>/LC_MESSAGES/gdebi.mo(msgfmt --check)
+#   make mo         编译 *.po → locale/<lang>/LC_MESSAGES/fdebm.mo(msgfmt --check)
 #   make install    安装 .mo 到 $(DESTDIR)/$(LOCALEDIR)/<lang>/LC_MESSAGES/
 #   make check      校验各 .po 的格式与一致性
 #   make clean      清理编译产物(locale/)
@@ -9,9 +9,9 @@
 # 源码内 msgid 经 gettext()/ngettext()/tf() 标注,提取关键字见 pot 目标。
 # 本地运行(未安装):
 #   make -C po mo
-#   GDEBI_LOCALEDIR=$PWD/po/locale LC_ALL=zh_CN.utf8 cargo run -p gdebi-gtk
+#   FDEBM_LOCALEDIR=$PWD/po/locale LC_ALL=zh_CN.utf8 cargo run -p fdebm-gtk
 
-DOMAIN   ?= gdebi
+DOMAIN   ?= fdebm
 VERSION  := $(shell sed -n 's/^version *= *"\(.*\)"/\1/p' ../Cargo.toml | head -1)
 LOCALEDIR ?= /usr/share/locale
 DESTDIR   ?=

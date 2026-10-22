@@ -1,4 +1,4 @@
-//! D-Bus 契约层(org.gdebi.Rs):GUI 瘦客户端与守护进程的唯一接口。
+//! D-Bus 契约层(org.fdebm):GUI 瘦客户端与守护进程的唯一接口。
 //!
 //! 方法:
 //! - AnalyzeLocalFile(s path, as apt_opts) → (b installable, s failure,
@@ -16,11 +16,11 @@ use zbus::message::Header;
 
 use crate::txn::{self, Manager};
 
-pub struct GdebiIface {
+pub struct FdebmIface {
     manager: Arc<Manager>,
 }
 
-impl GdebiIface {
+impl FdebmIface {
     pub fn new(manager: Arc<Manager>) -> Self {
         Self { manager }
     }
@@ -33,13 +33,13 @@ impl GdebiIface {
     }
 }
 
-#[zbus::interface(name = "org.gdebi.Rs")]
-impl GdebiIface {
+#[zbus::interface(name = "org.fdebm")]
+impl FdebmIface {
     async fn analyze_local_file(
         &self,
         path: String,
         apt_opts: Vec<String>,
-    ) -> zbus::fdo::Result<gdebi_core::AnalyzeResult> {
+    ) -> zbus::fdo::Result<fdebm_core::AnalyzeResult> {
         // 求解是重活(索引解析),放独立线程避免阻塞总线 executor
         let manager = self.manager.clone();
         let (tx, rx) = async_channel::bounded(1);

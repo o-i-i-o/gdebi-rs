@@ -11,12 +11,12 @@ use std::path::PathBuf;
 
 use sha2::{Digest, Sha256};
 
-use crate::error::GdebiError;
+use crate::error::FdebmError;
 use crate::i18n::gettext;
 use crate::solver::DownloadSpec;
 
 /// 依赖 deb 的本地缓存目录(守护进程以 root 运行,可写)
-pub const CACHE_DIR: &str = "/var/cache/gdebi-rs";
+pub const CACHE_DIR: &str = "/var/cache/fdebm";
 
 /// 下载进度回调
 pub trait DownloadProgress {
@@ -43,13 +43,13 @@ pub fn download_all(
     specs: &[DownloadSpec],
     progress: &dyn DownloadProgress,
     cancel: &CancelHandle,
-) -> Result<Vec<PathBuf>, GdebiError> {
+) -> Result<Vec<PathBuf>, FdebmError> {
     std::fs::create_dir_all(CACHE_DIR)?;
     let mut paths = Vec::with_capacity(specs.len());
     let total = specs.len();
     for (idx, spec) in specs.iter().enumerate() {
         if cancel.is_cancelled() {
-            return Err(GdebiError::Cancelled);
+            return Err(FdebmError::Cancelled);
         }
         progress.item_start(&spec.name, idx + 1, total);
         if cached_ok(spec) {
@@ -82,12 +82,12 @@ fn fetch_one(
     spec: &DownloadSpec,
     progress: &dyn DownloadProgress,
     cancel: &CancelHandle,
-) -> Result<(), GdebiError> {
+) -> Result<(), FdebmError> {
     let resp = ureq::get(&spec.url)
         .call()
-        .map_err(|e| GdebiError::Download(spec.url.clone(), e.to_string()))?;
+        .map_err(|e| FdebmError::Download(spec.url.clone(), e.to_string()))?;
     if resp.status() != 200 {
-        return Err(GdebiError::Download(
+        return Err(FdebmError::Download(
             spec.url.clone(),
             format!("HTTP {}", resp.status()),
         ));
@@ -102,11 +102,11 @@ fn fetch_one(
         if cancel.is_cancelled() {
             drop(file);
             let _ = std::fs::remove_file(&partial);
-            return Err(GdebiError::Cancelled);
+            return Err(FdebmError::Cancelled);
         }
         let n = reader
             .read(&mut buf)
-            .map_err(|e| GdebiError::Download(spec.url.clone(), e.to_string()))?;
+            .map_err(|e| FdebmError::Download(spec.url.clone(), e.to_string()))?;
         if n == 0 {
             break;
         }
@@ -120,7 +120,7 @@ fn fetch_one(
     let got = format!("{:x}", hasher.finalize());
     if !spec.sha256.is_empty() && got != spec.sha256 {
         let _ = std::fs::remove_file(&partial);
-        return Err(GdebiError::Download(
+        return Err(FdebmError::Download(
             spec.url.clone(),
             gettext("sha256 checksum mismatch"),
         ));

@@ -19,6 +19,7 @@ pub mod debfile;
 pub mod depcheck;
 pub mod error;
 pub mod flow;
+pub mod i18n;
 pub mod install;
 pub mod ui;
 pub mod version;

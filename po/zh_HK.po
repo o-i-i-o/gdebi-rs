@@ -1,0 +1,776 @@
+# Chinese (Hong Kong) translation for gdebi
+# Copyright (c) 2006 Rosetta Contributors and Canonical Ltd 2006
+# This file is distributed under the same license as the gdebi package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2006.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: gdebi\n"
+"Report-Msgid-Bugs-To: sebastian.heinlein@web.de\n"
+"POT-Creation-Date: 2026-10-22 14:45+0800\n"
+"PO-Revision-Date: 2012-12-08 15:35+0000\n"
+"Last-Translator: Roy Chan <roy.chan@linux.org.hk>\n"
+"Language-Team: Chinese (Hong Kong) <zh_HK@li.org>\n"
+"Language: zh_HK\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Launchpad-Export-Date: 2014-03-12 19:04+0000\n"
+"X-Generator: Launchpad (build 16963)\n"
+
+#: ../crates/gdebi-core/src/depcheck.rs:170
+msgid "No Architecture field in the package"
+msgstr "該套件沒有架構欄"
+
+#: ../crates/gdebi-core/src/depcheck.rs:180
+#, rust-format
+msgid ""
+"Wrong architecture '{0}' -- Run dpkg --add-architecture to add it and update "
+"afterwards"
+msgstr ""
+
+#: ../crates/gdebi-core/src/depcheck.rs:192
+msgid "A later version is already installed"
+msgstr "已安裝新版本"
+
+#: ../crates/gdebi-core/src/depcheck.rs:234
+#, fuzzy, rust-format
+#| msgid "All dependencies are satisfied"
+msgid "Dependency is not satisfiable: {0}\n"
+msgstr "已滿足所有套件相依性"
+
+#: ../crates/gdebi-core/src/depcheck.rs:237
+msgid "Failed to satisfy all dependencies (broken cache)"
+msgstr "未能滿足所有相依套件 (快取已損壞)"
+
+#: ../crates/gdebi-core/src/depcheck.rs:336
+#, fuzzy, rust-format
+#| msgid "Failed to install package '%s'"
+msgid "Conflicts with the installed package '{0}'"
+msgstr "未能安裝「%s」套件"
+
+#: ../crates/gdebi-core/src/depcheck.rs:359
+#, rust-format
+msgid "Breaks existing package '{0}' dependency {1} ({2} {3})"
+msgstr ""
+
+#: ../crates/gdebi-core/src/depcheck.rs:381
+#, rust-format
+msgid "Breaks existing package '{0}' conflict: {1} ({2} {3})"
+msgstr ""
+
+#: ../crates/gdebi-core/src/depcheck.rs:388
+#, rust-format
+msgid ""
+"Breaks existing package '{0}' that conflict: '{1}'. But the '{2}' provides "
+"it via: '{3}'"
+msgstr ""
+
+#: ../crates/gdebi-core/src/error.rs:31
+#, rust-format
+msgid "cannot open {0}: {1}"
+msgstr ""
+
+#: ../crates/gdebi-core/src/error.rs:33
+#, fuzzy, rust-format
+#| msgid "'%s' is not a Debian package"
+msgid "{0} is not a Debian package"
+msgstr "「%s」不是 Debian 套件"
+
+#: ../crates/gdebi-core/src/error.rs:34
+msgid "control file not found in package"
+msgstr ""
+
+#: ../crates/gdebi-core/src/error.rs:36
+#, rust-format
+msgid "{0} compressed control.tar is not supported yet (only gzip/plain)"
+msgstr ""
+
+#: ../crates/gdebi-core/src/error.rs:39
+#, rust-format
+msgid "missing control field: {0}"
+msgstr ""
+
+#: ../crates/gdebi-core/src/flow.rs:53
+#, rust-format
+msgid "Binary file ({0}), {1} bytes"
+msgstr ""
+
+#: ../crates/gdebi-core/src/flow.rs:54
+#, rust-format
+msgid "Binary file, {0} bytes"
+msgstr ""
+
+#: ../crates/gdebi-core/src/install.rs:47
+#, fuzzy
+#| msgid "Error during install: '%s'"
+msgid "Error during install"
+msgstr "在安裝時發生錯誤：「%s」"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:60
+msgid "simple tool to view and install deb files - GTK frontend"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:63
+msgid "Set an APT configuration option"
+msgstr "設定 APT 配置選項"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:65
+#, fuzzy
+#| msgid "'%s' is not a Debian package"
+msgid "Debian package to open"
+msgstr "「%s」不是 Debian 套件"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:239
+msgid "Package Installer"
+msgstr "套件安裝程式"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:278
+msgid "_Details"
+msgstr "詳情(_D)"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:286
+msgid "Package:"
+msgstr "套件："
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:286
+msgid "Status:"
+msgstr "狀態："
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:305
+#: ../crates/gdebi-gtk/src/gtk_app.rs:839
+msgid "_Install Package"
+msgstr "安裝套件(_I)"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:306
+msgid "_Remove Package"
+msgstr "移除套件(_R)"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:334
+msgid "Description"
+msgstr "說明"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:350
+#, fuzzy
+#| msgid "<b>Version:</b>"
+msgid "Version:"
+msgstr "<b>版本：</b>"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:351
+#, fuzzy
+#| msgid "<b>Maintainer:</b>"
+msgid "Maintainer:"
+msgstr "<b>維護者：</b>"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:352
+#, fuzzy
+#| msgid "<b>Priority:</b>"
+msgid "Priority:"
+msgstr "<b>優先等級：</b>"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:353
+#, fuzzy
+#| msgid "Description:"
+msgid "Section:"
+msgstr "說明："
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:354
+msgid "Size:"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:365
+msgid "Details"
+msgstr "詳情"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:393
+msgid "Included files"
+msgstr "包含檔案"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:403
+msgid "Lintian output"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:505
+msgid "Selection is a directory"
+msgstr "選擇的是資料夾"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:522
+msgid "File content can not be extracted"
+msgstr "無法抽取檔案內容"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:523
+#, fuzzy, rust-format
+#| msgid "Error reading file content '%s'"
+msgid "Error reading file content '{0}'"
+msgstr "讀取檔案內容「%s」時發生錯誤"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:534
+msgid "Package control data"
+msgstr "套件控制資料"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:540
+msgid "Upstream data"
+msgstr "上游資料"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:552
+msgid "Error reading filelist"
+msgstr "讀取檔案清單時發生錯誤"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:563
+msgid ""
+"No lintian available.\n"
+"Please install using sudo apt-get install lintian"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:567
+msgid "Running lintian..."
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:586
+#, rust-format
+msgid "Failed to run lintian: {0}"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:631
+#, rust-format
+msgid "Lintian finished with exit status {0}"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:643
+msgid "_Open…"
+msgstr "開啟(_O)…"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:644
+msgid "_Refresh"
+msgstr "重新整理(_R)"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:645
+msgid "_Quit"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:647
+msgid "_About"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:649
+msgid "_File"
+msgstr "檔案(_F)"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:650
+msgid "_Help"
+msgstr "求助(_H)"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:659
+#, fuzzy
+#| msgid "'%s' is not a Debian package"
+msgid "Open Debian package"
+msgstr "「%s」不是 Debian 套件"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:697
+msgid "simple tool to view and install deb files"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:718
+msgid "Loading..."
+msgstr "載入中..."
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:731
+#, rust-format
+msgid "gdebi error, file not found: {0}"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:745
+#, fuzzy
+#| msgid "Failed to open the software package\n"
+msgid "Could not open the software package"
+msgstr "未能開啟軟件套件\n"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:768
+msgid "Error opening the cache"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:780
+#, fuzzy
+#| msgid "Dependency problems"
+msgid "Dependency check failed"
+msgstr "相依性問題"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:792
+#, rust-format
+msgid "<span foreground=\"red\" weight=\"bold\">Error: {0}</span>"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:806
+#, fuzzy, rust-format
+#| msgid "Requires the <b>removal</b> of %s packages\n"
+msgid "Requires the <b>removal</b> of {0} package"
+msgid_plural "Requires the <b>removal</b> of {0} packages"
+msgstr[0] "需要<b>移除</b> %s 個套件\n"
+msgstr[1] "需要<b>移除</b> %s 個套件\n"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:817
+#, fuzzy, rust-format
+#| msgid "Requires the installation of %s packages"
+msgid "Requires the installation of {0} package"
+msgid_plural "Requires the installation of {0} packages"
+msgstr[0] "需要安裝 %s 個套件"
+msgstr[1] "需要安裝 %s 個套件"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:832
+msgid "Same version is already installed"
+msgstr "已安裝相同版本"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:834
+msgid "_Reinstall Package"
+msgstr "重新安裝套件(_R)"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:846
+msgid "All dependencies are satisfied"
+msgstr "已滿足所有套件相依性"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:896
+msgid "Applying changes"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:899
+msgid "Close"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:914
+msgid "Terminal"
+msgstr "終端機"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:917
+msgid "Automatically close after the changes have been successfully applied"
+msgstr "變更套用完成後自動關閉"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1007
+msgid "gdebi error"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1035
+msgid "Install unauthenticated software?"
+msgstr "是否安裝未經認證的軟件？"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1037
+#, fuzzy, rust-format
+#| msgid "The following packages are UNAUTHENTICATED: "
+msgid "The following packages are UNAUTHENTICATED: {0}"
+msgstr "以下套件是＊未經認證＊的： "
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1047
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1050
+msgid "Installing package file..."
+msgstr "安裝套件中..."
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1051
+msgid "Installation complete"
+msgstr "完成安裝"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1052
+msgid "Failed to install package file"
+msgstr "未能安裝套件檔案"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1074
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1079
+msgid "Removing package..."
+msgstr "移除套件中..."
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1080
+msgid "Removal complete"
+msgstr "完成移除"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1081
+msgid "Failed to remove package"
+msgstr "未能移除套件"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1122
+msgid "You need to grant administrative rights to remove software"
+msgstr "需要管理員權限才能移除軟件"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1123
+msgid "It is a possible risk to remove packages."
+msgstr "移除套件可能會有風險。"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1127
+msgid "You need to grant administrative rights to install software"
+msgstr "需要管理員權限才能安裝軟件"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1129
+#, fuzzy
+#| msgid ""
+#| "\n"
+#| "It is a possible security risk to install packages files manually.\n"
+#| "Install software from trustworthy software distributors only.\n"
+msgid ""
+"It is a possible security risk to install packages files manually.\n"
+"Install software from trustworthy software distributors only."
+msgstr ""
+"\n"
+"手動安裝套件檔會有安全危機。\n"
+"請只安裝由可信的軟件分發者提供的軟件。\n"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1147
+#, fuzzy
+#| msgid "Failed to open the software package\n"
+msgid "Failed to locate the program executable"
+msgstr "未能開啟軟件套件\n"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1171
+#, fuzzy
+#| msgid "Failed to install package file"
+msgid "Failed to start pkexec"
+msgstr "未能安裝套件檔案"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1184
+#, fuzzy, rust-format
+#| msgid "<b>To be removed: %s</b>"
+msgid "<b>To be removed: {0}</b>"
+msgstr "<b>要刪除：%s</b>"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1188
+#, fuzzy, rust-format
+#| msgid "To be installed: %s"
+msgid "To be installed: {0}"
+msgstr "要安裝：%s"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1196
+#, fuzzy
+#| msgid "Media Change"
+msgid "Changes"
+msgstr "更改媒體"
+
+#, c-format
+#~ msgid ""
+#~ "usage: %prog [options] filename\n"
+#~ "For a graphical version run gdebi-gtk\n"
+#~ msgstr ""
+#~ "使用方法：%prog [選項] 檔案名稱\n"
+#~ "要使用圖像介面版本，請執行 gdebi-gtk\n"
+
+#~ msgid "Run non-interactive (dangerous!)"
+#~ msgstr "以非交談模式運行 (危險！)"
+
+#~ msgid "Do not show progress information"
+#~ msgstr "不顯示進度資訊"
+
+#~ msgid "Do you want to install the software package? [y/N]:"
+#~ msgstr "要安裝軟件套件嗎？[y/N]："
+
+#~ msgid "Auto close when the install is finished"
+#~ msgstr "安裝完成後自動關閉"
+
+#~ msgid "Remove package"
+#~ msgstr "移除套件"
+
+#~ msgid ""
+#~ "This is a major failure of your software management system. Please check "
+#~ "for broken packages with synaptic, check the file permissions and "
+#~ "correctness of the file '/etc/apt/sources.list' and reload the software "
+#~ "information with: 'sudo apt-get update' and 'sudo apt-get install -f'."
+#~ msgstr ""
+#~ "軟件管理系統發生嚴重故障，請以 Synaptic 套件管理員檢查破損的套件，檢查檔"
+#~ "案 /etc/apt/sources.list 的權限和內容是否正確，然後以 sudo apt-get update "
+#~ "以及 sudo apt-get install -f 指令重新載入軟件資訊。"
+
+#~ msgid "Install and view software packages"
+#~ msgstr "安裝和檢視軟件套件"
+
+#~ msgid "GPL, see /usr/share/common-licenses/GPL"
+#~ msgstr "GPL，請參看 /usr/share/common-licenses/GPL"
+
+#~ msgid "<b>To install the following changes are required:</b>"
+#~ msgstr "<b>要進行安裝，必須作出以下更動：</b>"
+
+#~ msgid "_Edit"
+#~ msgstr "編輯(_E)"
+
+#~ msgid "<b><big>   </big></b>"
+#~ msgstr "<b><big> </big></b>"
+
+#~ msgid "_Download Package"
+#~ msgstr "下載套件(_D)"
+
+#~ msgid "<b>Section:</b>"
+#~ msgstr "<b>組別：</b>"
+
+#~ msgid "<b>Size:</b>"
+#~ msgstr "<b>大小：</b>"
+
+#~ msgid "  "
+#~ msgstr "  "
+
+#~ msgid "GDebi Package Installer"
+#~ msgstr "GDebi 套件安裝程式"
+
+#, python-format
+#~ msgid "%s is not available"
+#~ msgstr "缺少 %s"
+
+#~ msgid "Copy selected text"
+#~ msgstr "複製所選文字"
+
+#~ msgid "Can not download as root"
+#~ msgstr "無法以 root 身分下載"
+
+#~ msgid ""
+#~ "Remote packages can not be downloaded when running as root. Please try "
+#~ "again as a normal user."
+#~ msgstr "當以 root 身分執行時無法下載遠端套件。請以一般使用者身分重試。"
+
+#~ msgid "Downloading package"
+#~ msgstr "正在下載套件"
+
+#~ msgid "Download failed"
+#~ msgstr "未能下載"
+
+#, python-format
+#~ msgid "Downloading the package failed: file '%s' '%s'"
+#~ msgstr "未能下載套件：檔案「%s」「%s」"
+
+#, python-format
+#~ msgid "Package Installer - %s"
+#~ msgstr "套件安裝程式 - %s"
+
+#~ msgid "Error: "
+#~ msgstr "錯誤： "
+
+#~ msgid "Error: no longer provides "
+#~ msgstr "錯誤：不再提供 "
+
+#~ msgid "Open Software Package"
+#~ msgstr "開啟軟件套件"
+
+#~ msgid "Software packages"
+#~ msgstr "軟件套件"
+
+#, python-format
+#~ msgid "One or more packages are required by %s, it cannot be removed."
+#~ msgstr "%s 需要當中某個套件，故無法將之移除。"
+
+#~ msgid "File not found"
+#~ msgstr "找不到檔案"
+
+#~ msgid "You tried to install a file that does not (or no longer) exist. "
+#~ msgstr "您正試圖安裝一個不存在或不再存在的檔案。 "
+
+#~ msgid ""
+#~ "Malicious software can damage your data and take control of your system.\n"
+#~ "\n"
+#~ "The packages below are not authenticated and could therefore be of "
+#~ "malicious nature."
+#~ msgstr ""
+#~ "惡意軟件可能會損害您的資料並控制您的系統。\n"
+#~ "\n"
+#~ "下列套件沒有經過認證，可能帶有惡意。"
+
+#~ msgid "Could not download all required files"
+#~ msgstr "無法下載所有需要的檔案"
+
+#~ msgid "Please check your internet connection or installation medium."
+#~ msgstr "請檢查您的互聯網連線或者安裝媒體。"
+
+#~ msgid "Could not install all dependencies"
+#~ msgstr "無法安裝所有相依套件"
+
+#~ msgid ""
+#~ "Usually this is related to an error of the software distributor. See the "
+#~ "terminal window for more details."
+#~ msgstr "這一般是由軟件分發者的錯誤引起。詳情請參看終端視窗。"
+
+#, python-format
+#~ msgid "Installing %s"
+#~ msgstr "正在安裝 %s"
+
+#, python-format
+#~ msgid "Removing %s"
+#~ msgstr "移除 %s"
+
+#~ msgid "Installation finished"
+#~ msgstr "完成安裝"
+
+#~ msgid "Removal finished"
+#~ msgstr "完成移除"
+
+#, python-format
+#~ msgid "Package '%s' was installed"
+#~ msgstr "已安裝「%s」套件"
+
+#, python-format
+#~ msgid "Package '%s' was removed"
+#~ msgstr "已移除「%s」套件"
+
+#, python-format
+#~ msgid "Failed to remove package '%s'"
+#~ msgstr "未能移除「%s」套件"
+
+#~ msgid "Failed to completely install all dependencies"
+#~ msgstr "未能完全安裝所有相依套件"
+
+#~ msgid "Failed to completely remove package"
+#~ msgstr "未能完全移除套件"
+
+#~ msgid "To fix this run 'sudo apt-get install -f' in a terminal window."
+#~ msgstr "在終端機執行 sudo apt-get install -f 以解決此問題。"
+
+#, python-format
+#~ msgid "Installing '%s'..."
+#~ msgstr "正在安裝「%s」..."
+
+#, python-format
+#~ msgid "Removing '%s'..."
+#~ msgstr "正在移除「%s」..."
+
+#~ msgid "Installing dependencies..."
+#~ msgstr "正在安裝相依套件..."
+
+#~ msgid "Downloading additional package files..."
+#~ msgstr "正在下載額外的套件檔案..."
+
+#, python-format
+#~ msgid "File %s of %s at %sB/s"
+#~ msgstr "檔案 %s / %s (速度：%s 位元組/秒)"
+
+#, python-format
+#~ msgid "File %s of %s"
+#~ msgstr "檔案 %s / %s"
+
+#, python-format
+#~ msgid "Please insert '%s' into the drive '%s'"
+#~ msgstr "請將「%s」放入「%s」光碟機"
+
+#, python-format
+#~ msgid "Couldn't set APT option %s to %s\n"
+#~ msgstr "不能將 APT 選項 %s 設定為 %s\n"
+
+#, python-format
+#~ msgid "Unknown package type '%s', exiting\n"
+#~ msgstr "不明的套件類型「%s」，結束。\n"
+
+#~ msgid ""
+#~ "The package might be corrupted or you are not allowed to open the file. "
+#~ "Check the permissions of the file.\n"
+#~ msgstr "套件可能已損壞，或者您無權開啟檔案。請檢查檔案的權限。\n"
+
+#~ msgid "This package is uninstallable\n"
+#~ msgstr "此套件無法安裝\n"
+
+#~ msgid "No description is available"
+#~ msgstr "沒有說明"
+
+#~ msgid "Requires the REMOVAL of the following packages: "
+#~ msgstr "必須【移除】以下套件： "
+
+#~ msgid "Requires the installation of the following packages: "
+#~ msgstr "必須安裝以下套件： "
+
+#~ msgid "Included Files"
+#~ msgstr "包含檔案"
+
+#~ msgid "&Install Package"
+#~ msgstr "安裝套件(&I)"
+
+#~ msgid "&Download Package"
+#~ msgstr "下載套件(&D)"
+
+#~ msgid "&Reinstall Package"
+#~ msgstr "重新安裝套件(&R)"
+
+#~ msgid "Re&install Package"
+#~ msgstr "重新安裝套件(&I)"
+
+#, python-format
+#~ msgid "To be removed: %s"
+#~ msgstr "要移除：%s"
+
+#~ msgid "Broken dependencies"
+#~ msgstr "套件相依性損壞"
+
+#~ msgid ""
+#~ "Your system has broken dependencies. This application can not continue "
+#~ "until this is fixed. To fix it run 'gksudo synaptic' or 'sudo apt-get "
+#~ "install -f' in a terminal window."
+#~ msgstr ""
+#~ "您的系統有損壞的相依關係。除非修正問題，否則本應用程式不能繼續運作。在終端"
+#~ "機視窗執行「gksudo synaptic」或「sudo apt-get install -f」修正。"
+
+#, python-format
+#~ msgid ""
+#~ "The MIME type of this file is '%s' and can not be installed on this "
+#~ "system."
+#~ msgstr "此檔案的 MIME 類型是「%s」，不能安裝在此系統。"
+
+#, python-format
+#~ msgid "Could not open '%s'"
+#~ msgstr "無法開啟「%s」"
+
+#~ msgid ""
+#~ "The package might be corrupted or you are not allowed to open the file. "
+#~ "Check the permissions of the file."
+#~ msgstr "套件可能已損壞，或您沒有權限開啟此檔案。請檢查檔案的權限。"
+
+#~ msgid "Same version is available in a software channel"
+#~ msgstr "在軟件頻道有相同版本"
+
+#~ msgid ""
+#~ "You are recommended to install the software from the channel instead."
+#~ msgstr "建議安裝軟件頻道的版本。"
+
+#~ msgid "An older version is available in a software channel"
+#~ msgstr "在軟件頻道有較舊版本"
+
+#~ msgid ""
+#~ "Generally you are recommended to install the version from the software "
+#~ "channel, since it is usually better supported."
+#~ msgstr "通常最好安裝軟件頻道的版本，因為會有較好的支援。"
+
+#~ msgid "A later version is available in a software channel"
+#~ msgstr "在軟件頻道有較新版本"
+
+#~ msgid ""
+#~ "You are strongly advised to install the version from the software "
+#~ "channel, since it is usually better supported."
+#~ msgstr "強烈建議你安裝軟件頻道的版本，因為有較好支援。"
+
+#~ msgid "Only one software management tool is allowed to run at the same time"
+#~ msgstr "同一時間只可以有一個軟件管理工具運作"
+
+#~ msgid ""
+#~ "Please close the other application e.g. 'Update Manager', 'aptitude' or "
+#~ "'Synaptic' first."
+#~ msgstr ""
+#~ "請先關閉其他應用程式，如「更新管理員」、「aptitude」或「Synaptic 套件管理"
+#~ "程式」等。"
+
+#, python-format
+#~ msgid "Wrong architecture '%s'"
+#~ msgstr "錯誤平台「%s」"
+
+#~ msgid "<b>"
+#~ msgstr "<b>"
+
+#~ msgid "Software package"
+#~ msgstr "軟件套件"
+
+#~ msgid "translator-credits"
+#~ msgstr ""
+#~ "Launchpad Contributions:\n"
+#~ "  Roy Chan https://launchpad.net/~roy-chan-linux\n"
+#~ "  Walter Cheuk https://launchpad.net/~wwycheuk"
+
+#~ msgid "_Open..."
+#~ msgstr "開啟(_O)..."
+
+#~ msgid ""
+#~ "Breaks existing package '%(pkgname)s' dependency %(depname)s (%"
+#~ "(deprelation)s %(depversion)s)"
+#~ msgstr ""
+#~ "會破壞現有「%(pkgname)s」套件之相依性 %(depname)s (%(deprelation)s %"
+#~ "(depversion)s)"
+
+#~ msgid ""
+#~ "Breaks existing package '%(pkgname)s' conflict: %(targetpkg)s (%"
+#~ "(comptype)s %(targetver)s)"
+#~ msgstr ""
+#~ "會破壞現有「%(pkgname)s」套件；衝突來源：%(targetpkg)s (%(comptype)s %"
+#~ "(targetver)s)"

@@ -1,0 +1,790 @@
+# Lithuanian translation for gdebi
+# Copyright (c) 2008 Rosetta Contributors and Canonical Ltd 2008
+# This file is distributed under the same license as the gdebi package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2008.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: gdebi\n"
+"Report-Msgid-Bugs-To: sebastian.heinlein@web.de\n"
+"POT-Creation-Date: 2026-10-22 14:45+0800\n"
+"PO-Revision-Date: 2009-11-19 15:34+0000\n"
+"Last-Translator: jonas-ska <Unknown>\n"
+"Language-Team: Lithuanian <lt@li.org>\n"
+"Language: lt\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Launchpad-Export-Date: 2014-03-12 19:04+0000\n"
+"X-Generator: Launchpad (build 16963)\n"
+
+#: ../crates/gdebi-core/src/depcheck.rs:170
+msgid "No Architecture field in the package"
+msgstr "Pakete nenurodyta pageidaujama sistemos architektūra"
+
+#: ../crates/gdebi-core/src/depcheck.rs:180
+#, rust-format
+msgid ""
+"Wrong architecture '{0}' -- Run dpkg --add-architecture to add it and update "
+"afterwards"
+msgstr ""
+
+#: ../crates/gdebi-core/src/depcheck.rs:192
+msgid "A later version is already installed"
+msgstr "Naujesnė versija jau įdiegta"
+
+#: ../crates/gdebi-core/src/depcheck.rs:234
+#, fuzzy, rust-format
+#| msgid "Dependency is not satisfiable: %s\n"
+msgid "Dependency is not satisfiable: {0}\n"
+msgstr "Neįmanoma įdiegti priklausomo paketo %s\n"
+
+#: ../crates/gdebi-core/src/depcheck.rs:237
+msgid "Failed to satisfy all dependencies (broken cache)"
+msgstr "Nepavyko įdiegti visų priklausomų paketų (klaida atmintyje)"
+
+#: ../crates/gdebi-core/src/depcheck.rs:336
+#, fuzzy, rust-format
+#| msgid "Conflicts with the installed package '%s'\n"
+msgid "Conflicts with the installed package '{0}'"
+msgstr "Kertasi su įdiegtu paketu „%s“\n"
+
+#: ../crates/gdebi-core/src/depcheck.rs:359
+#, fuzzy, rust-format
+#| msgid "Breaks exisiting package '%s' dependency %s (%s %s)\n"
+msgid "Breaks existing package '{0}' dependency {1} ({2} {3})"
+msgstr "Paketo „%s“ priklausomybę naikina %s (%s %s)\n"
+
+#: ../crates/gdebi-core/src/depcheck.rs:381
+#, fuzzy, rust-format
+#| msgid "Breaks exisiting package '%s' conflict: %s (%s %s)\n"
+msgid "Breaks existing package '{0}' conflict: {1} ({2} {3})"
+msgstr "Paketas „%s“ pašalina konfliktą su %s (%s %s)\n"
+
+#: ../crates/gdebi-core/src/depcheck.rs:388
+#, rust-format
+msgid ""
+"Breaks existing package '{0}' that conflict: '{1}'. But the '{2}' provides "
+"it via: '{3}'"
+msgstr ""
+
+#: ../crates/gdebi-core/src/error.rs:31
+#, rust-format
+msgid "cannot open {0}: {1}"
+msgstr ""
+
+#: ../crates/gdebi-core/src/error.rs:33
+#, fuzzy, rust-format
+#| msgid "'%s' is not a Debian package"
+msgid "{0} is not a Debian package"
+msgstr "„%s“ yra ne Debian paketas"
+
+#: ../crates/gdebi-core/src/error.rs:34
+msgid "control file not found in package"
+msgstr ""
+
+#: ../crates/gdebi-core/src/error.rs:36
+#, rust-format
+msgid "{0} compressed control.tar is not supported yet (only gzip/plain)"
+msgstr ""
+
+#: ../crates/gdebi-core/src/error.rs:39
+#, rust-format
+msgid "missing control field: {0}"
+msgstr ""
+
+#: ../crates/gdebi-core/src/flow.rs:53
+#, rust-format
+msgid "Binary file ({0}), {1} bytes"
+msgstr ""
+
+#: ../crates/gdebi-core/src/flow.rs:54
+#, rust-format
+msgid "Binary file, {0} bytes"
+msgstr ""
+
+#: ../crates/gdebi-core/src/install.rs:47
+#, fuzzy
+#| msgid "IOError during filelist read: %s"
+msgid "Error during install"
+msgstr "Įvesties/išvesties klaida skaitant %s sąrašą"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:60
+msgid "simple tool to view and install deb files - GTK frontend"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:63
+msgid "Set an APT configuration option"
+msgstr "Pasirinkite APT konfigūracijos nustatymus"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:65
+#, fuzzy
+#| msgid "'%s' is not a Debian package"
+msgid "Debian package to open"
+msgstr "„%s“ yra ne Debian paketas"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:239
+msgid "Package Installer"
+msgstr "Paketų diegyklė"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:278
+msgid "_Details"
+msgstr "_Išsamiau"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:286
+msgid "Package:"
+msgstr "Paketas:"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:286
+msgid "Status:"
+msgstr "Būsena:"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:305
+#: ../crates/gdebi-gtk/src/gtk_app.rs:839
+msgid "_Install Package"
+msgstr "Į_diegti paketą"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:306
+msgid "_Remove Package"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:334
+msgid "Description"
+msgstr "Apibūdinimas"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:350
+#, fuzzy
+#| msgid "<b>Version:</b>"
+msgid "Version:"
+msgstr "<b>Versija:</b>"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:351
+#, fuzzy
+#| msgid "<b>Maintainer:</b>"
+msgid "Maintainer:"
+msgstr "<b>Prižiūrėtojas:</b>"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:352
+#, fuzzy
+#| msgid "<b>Priority:</b>"
+msgid "Priority:"
+msgstr "<b>Svarba:</b>"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:353
+#, fuzzy
+#| msgid "Description:"
+msgid "Section:"
+msgstr "Aprašas:"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:354
+msgid "Size:"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:365
+msgid "Details"
+msgstr "Išsamiau"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:393
+msgid "Included files"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:403
+msgid "Lintian output"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:505
+msgid "Selection is a directory"
+msgstr "Pasirinktas katalogas"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:522
+msgid "File content can not be extracted"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:523
+#, rust-format
+msgid "Error reading file content '{0}'"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:534
+msgid "Package control data"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:540
+msgid "Upstream data"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:552
+msgid "Error reading filelist"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:563
+msgid ""
+"No lintian available.\n"
+"Please install using sudo apt-get install lintian"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:567
+msgid "Running lintian..."
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:586
+#, rust-format
+msgid "Failed to run lintian: {0}"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:631
+#, rust-format
+msgid "Lintian finished with exit status {0}"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:643
+msgid "_Open…"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:644
+msgid "_Refresh"
+msgstr "_Atnaujinti"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:645
+msgid "_Quit"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:647
+msgid "_About"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:649
+msgid "_File"
+msgstr "_Byla"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:650
+msgid "_Help"
+msgstr "_Pagalba"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:659
+#, fuzzy
+#| msgid "'%s' is not a Debian package"
+msgid "Open Debian package"
+msgstr "„%s“ yra ne Debian paketas"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:697
+msgid "simple tool to view and install deb files"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:718
+msgid "Loading..."
+msgstr "Įkeliama..."
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:731
+#, fuzzy, rust-format
+#| msgid "gdebi error, file not found: %s\n"
+msgid "gdebi error, file not found: {0}"
+msgstr "gdebi klaida, nerasta byla %s\n"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:745
+#, fuzzy
+#| msgid "Failed to open the software package\n"
+msgid "Could not open the software package"
+msgstr "Nepavyko atverti programinio paketo\n"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:768
+msgid "Error opening the cache"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:780
+msgid "Dependency check failed"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:792
+#, rust-format
+msgid "<span foreground=\"red\" weight=\"bold\">Error: {0}</span>"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:806
+#, fuzzy, rust-format
+#| msgid "Requires the <b>removal</b> of %s packages\n"
+msgid "Requires the <b>removal</b> of {0} package"
+msgid_plural "Requires the <b>removal</b> of {0} packages"
+msgstr[0] "Reikia <b>pašalinti</b> %s paketus (-ų)\n"
+msgstr[1] "Reikia <b>pašalinti</b> %s paketus (-ų)\n"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:817
+#, fuzzy, rust-format
+#| msgid "Requires the installation of %s packages"
+msgid "Requires the installation of {0} package"
+msgid_plural "Requires the installation of {0} packages"
+msgstr[0] "Reikia įdiegti %s paketus (-ų)"
+msgstr[1] "Reikia įdiegti %s paketus (-ų)"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:832
+msgid "Same version is already installed"
+msgstr "Ta pati versija jau įdiegta"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:834
+msgid "_Reinstall Package"
+msgstr "_Perdiegti paketą"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:846
+msgid "All dependencies are satisfied"
+msgstr "Visi priklausomi paketai įdiegti"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:896
+msgid "Applying changes"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:899
+msgid "Close"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:914
+msgid "Terminal"
+msgstr "Terminalas"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:917
+msgid "Automatically close after the changes have been successfully applied"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1007
+#, fuzzy
+#| msgid "gdebi"
+msgid "gdebi error"
+msgstr "gdebi"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1035
+msgid "Install unauthenticated software?"
+msgstr "Įdiegti nepatvirtintą programinę įrangą?"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1037
+#, fuzzy, rust-format
+#| msgid "The following packages are UNAUTHENTICATED: "
+msgid "The following packages are UNAUTHENTICATED: {0}"
+msgstr "Šių paketų autentiškumas NEPATVIRTINTAS: "
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1047
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1050
+msgid "Installing package file..."
+msgstr "Diegiama paketo byla..."
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1051
+msgid "Installation complete"
+msgstr "Diegimas baigtas"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1052
+msgid "Failed to install package file"
+msgstr "Nepavyko įdiegti paketo bylos"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1074
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1079
+msgid "Removing package..."
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1080
+msgid "Removal complete"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1081
+msgid "Failed to remove package"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1122
+msgid "You need to grant administrative rights to remove software"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1123
+msgid "It is a possible risk to remove packages."
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1127
+msgid "You need to grant administrative rights to install software"
+msgstr ""
+"Tam, kad šios programos būtų įdiegtos, Jūs turite suteikti prieigos teises"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1129
+#, fuzzy
+#| msgid ""
+#| "\n"
+#| "It is a possible security risk to install packages files manually.\n"
+#| "Install software from trustworthy software distributors only.\n"
+msgid ""
+"It is a possible security risk to install packages files manually.\n"
+"Install software from trustworthy software distributors only."
+msgstr ""
+"\n"
+"Rankinis paketų diegimas yra ganėtinai pavojingas.\n"
+"Įdiekite tik iš patikimų programinės įrangos gamintojų.\n"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1147
+#, fuzzy
+#| msgid "Failed to open the software package\n"
+msgid "Failed to locate the program executable"
+msgstr "Nepavyko atverti programinio paketo\n"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1171
+#, fuzzy
+#| msgid "Failed to install package file"
+msgid "Failed to start pkexec"
+msgstr "Nepavyko įdiegti paketo bylos"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1184
+#, fuzzy, rust-format
+#| msgid "<b>To be removed: %s</b>"
+msgid "<b>To be removed: {0}</b>"
+msgstr "<b>Bus pašalinta: %s</b>"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1188
+#, fuzzy, rust-format
+#| msgid "To be installed: %s"
+msgid "To be installed: {0}"
+msgstr "Bus įdiegta: %s"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1196
+#, fuzzy
+#| msgid "Media Change"
+msgid "Changes"
+msgstr "Laikmenos keitimas"
+
+#, c-format
+#~ msgid ""
+#~ "usage: %prog [options] filename\n"
+#~ "For a graphical version run gdebi-gtk\n"
+#~ msgstr ""
+#~ "naudojimas: %prog [nustatymai] failas\n"
+#~ "Norėdami grafinės versijos, paleiskite gdebi-gtk\n"
+
+#~ msgid "Run non-interactive (dangerous!)"
+#~ msgstr "Paleisti automatiškai sprendimus priimančiu rėžimu (pavojinga!)"
+
+#~ msgid "Do not show progress information"
+#~ msgstr "Norodyti būklės informacijos"
+
+#~ msgid "Simulate only and print a apt-get install compatible line to stderr"
+#~ msgstr "Išspausdinti netikrą su apt-get install suderinamą eilutę į stderr"
+
+#~ msgid "Use alternative root dir"
+#~ msgstr "Naudoti alternatyvų šakninį katalogą"
+
+#~ msgid "Need to be root to install packages"
+#~ msgstr "Norint įdiegti paketus, reikia turėti prieigos teises"
+
+#~ msgid "Do you want to install the software package? [y/N]:"
+#~ msgstr "Ar norite įdiegti šį programų paketą? [y/N]:"
+
+#~ msgid "Software index is broken"
+#~ msgstr "Programinės įrangos rodyklė sugadinta"
+
+#~ msgid ""
+#~ "This is a major failure of your software management system. Please check "
+#~ "for broken packages with synaptic, check the file permissions and "
+#~ "correctness of the file '/etc/apt/sources.list' and reload the software "
+#~ "information with: 'sudo apt-get update' and 'sudo apt-get install -f'."
+#~ msgstr ""
+#~ "Jūsų sistemą ištiko kritinė programų tvarkymo klaida. Prašome su synaptic "
+#~ "patikrinti, ar yra sugadintų paketų, bei peržiūrėti bylų prieigos teises "
+#~ "bei bylos „/etc/apt/sources/list“ taisyklingumą ir iš naujo atsiųsti "
+#~ "programinės įrangos informaciją naudojant komandas „sudo apt-get update“ "
+#~ "bei „sudo apt-get install -f“."
+
+#~ msgid "Install and view software packages"
+#~ msgstr "Įdiegti ir peržiūrėti programinės įrangos paketus"
+
+#~ msgid "GPL, see /usr/share/common-licenses/GPL"
+#~ msgstr "GPL, žiūrėkite /usr/share/common-licenses/GPL"
+
+#~ msgid "<b>To install the following changes are required:</b>"
+#~ msgstr "<b>Įdiegimui reikalingi šie pakeitimai:</b>"
+
+#~ msgid "<b><big>   </big></b>"
+#~ msgstr "<b><big> </big></b>"
+
+#~ msgid "<b>Section:</b>"
+#~ msgstr "<b>Skyrius:</b>"
+
+#~ msgid "<b>Size:</b>"
+#~ msgstr "<b>Dydis:</b>"
+
+#~ msgid "  "
+#~ msgstr "  "
+
+#~ msgid "GDebi Package Installer"
+#~ msgstr "„GDebi“ paketų diegyklė"
+
+#, python-format
+#~ msgid "%s is not available"
+#~ msgstr "%s neprieinamas"
+
+#, python-format
+#~ msgid "Package Installer - %s"
+#~ msgstr "Paketų diegyklė – %s"
+
+#~ msgid "Error: "
+#~ msgstr "Klaida: "
+
+#~ msgid "Open Software Package"
+#~ msgstr "Atverti programinį paketą"
+
+#~ msgid "Software packages"
+#~ msgstr "Programiniai paketai"
+
+#~ msgid "File not found"
+#~ msgstr "Byla nerasta"
+
+#~ msgid "You tried to install a file that does not (or no longer) exist. "
+#~ msgstr "Jūs pabandėte įdiegti nebeegzistuojančią bylą. "
+
+#~ msgid ""
+#~ "Malicious software can damage your data and take control of your system.\n"
+#~ "\n"
+#~ "The packages below are not authenticated and could therefore be of "
+#~ "malicious nature."
+#~ msgstr ""
+#~ "Kenksminga programinė įranga gali pakenkti jūsų duomenims arba perimti "
+#~ "sistemos valdymą.\n"
+#~ "\n"
+#~ "Žemiau pateikti paketai nėra patvirtinti saugiais ir gali būti kenksmingi."
+
+#~ msgid "Could not download all required files"
+#~ msgstr "Nepavyko atsiųsti visų reikalingų bylų"
+
+#~ msgid "Please check your internet connection or installation medium."
+#~ msgstr "Patikrinkite interneto ryšį ar diegimo laikmeną."
+
+#~ msgid "Could not install all dependencies"
+#~ msgstr "Nepavyko įdiegti visų priklausomų paketų"
+
+#~ msgid ""
+#~ "Usually this is related to an error of the software distributor. See the "
+#~ "terminal window for more details."
+#~ msgstr ""
+#~ "Paprastai tai yra susiję su programinės įrangos platintoju. Peržiūrėkite "
+#~ "terminalo langą, norėdami gauti daugiau informacijos."
+
+#, python-format
+#~ msgid "Installing %s"
+#~ msgstr "Diegiama %s"
+
+#~ msgid "Installation finished"
+#~ msgstr "Diegimas baigtas"
+
+#, python-format
+#~ msgid "Package '%s' was installed"
+#~ msgstr "Paketas „%s“ yra įdiegtas"
+
+#, python-format
+#~ msgid "Failed to install package '%s'"
+#~ msgstr "Nepavyko įdiegti paketo „%s“"
+
+#~ msgid "Failed to completely install all dependencies"
+#~ msgstr "Nepavyko visiškai įdiegti visų priklausomų paketų"
+
+#~ msgid "To fix this run 'sudo apt-get install -f' in a terminal window."
+#~ msgstr ""
+#~ "Norėdami tai ištaisyti, terminalo lange įveskite „sudo apt-get install "
+#~ "-f“."
+
+#, python-format
+#~ msgid "Installing '%s'..."
+#~ msgstr "Diegiama „%s“..."
+
+#~ msgid "Installing dependencies..."
+#~ msgstr "Diegiami priklausantys paketai..."
+
+#~ msgid "Downloading additional package files..."
+#~ msgstr "Atsiunčiamos papildomos paketo bylos..."
+
+#, python-format
+#~ msgid "File %s of %s at %sB/s"
+#~ msgstr "Byla %s iš %s %sB/s greičiu"
+
+#, python-format
+#~ msgid "File %s of %s"
+#~ msgstr "%s byla iš %s"
+
+#, python-format
+#~ msgid "Please insert '%s' into the drive '%s'"
+#~ msgstr "Įdėkite „%s“ į įrenginį „%s“"
+
+#~ msgid "Configuration items must be specified with a =<value>\n"
+#~ msgstr "Nustatymai turi būti nurodyti šitaip: =<reikšmė>\n"
+
+#, python-format
+#~ msgid "Couldn't set APT option %s to %s\n"
+#~ msgstr "Nepavyko nustatyti %s APT parinkties %s\n"
+
+#, python-format
+#~ msgid "Unknown package type '%s', exiting\n"
+#~ msgstr "Nežinomas paketo tipas „%s“, išeinama\n"
+
+#~ msgid ""
+#~ "The package might be corrupted or you are not allowed to open the file. "
+#~ "Check the permissions of the file.\n"
+#~ msgstr ""
+#~ "Šis paketas galbūt yra sugadintas arba jums tiesiog neleidžiama jo "
+#~ "atidaryti. Patikrinkite bylų prieigos taisykles.\n"
+
+#~ msgid "This package is uninstallable\n"
+#~ msgstr "Šis paketas yra nešalintinas\n"
+
+#~ msgid "No description is available"
+#~ msgstr "Nėra jokio aprašymo"
+
+#~ msgid "Requires the REMOVAL of the following packages: "
+#~ msgstr "Reikia PAŠALINTI šiuos paketus: "
+
+#~ msgid "Requires the installation of the following packages: "
+#~ msgstr "Reikia įdiegti šiuos paketus: "
+
+#~ msgid "Included Files"
+#~ msgstr "Įtrauktos bylos"
+
+#~ msgid "&Install Package"
+#~ msgstr "&Diegti paketą"
+
+#~ msgid "The package file does not exist"
+#~ msgstr "Toks paketas neegzistuoja"
+
+#~ msgid ""
+#~ "A nonexistent file has been selected for installation. Please select an "
+#~ "existing .deb package file."
+#~ msgstr ""
+#~ "Diegti buvo parinkta neegzistuojanti byla. Prašome pasirinkti "
+#~ "egzistuojančią .deb paketinę bylą."
+
+#~ msgid "&Reinstall Package"
+#~ msgstr "&Perdiegti paketą"
+
+#~ msgid "Re&install Package"
+#~ msgstr "Per&diegti paketą"
+
+#, python-format
+#~ msgid "To be removed: %s"
+#~ msgstr "Bus pašalinta: %s"
+
+#~ msgid "Broken dependencies"
+#~ msgstr "Netenkinamos priklausomybės"
+
+#~ msgid ""
+#~ "Your system has broken dependencies. This application can not continue "
+#~ "until this is fixed. To fix it run 'gksudo synaptic' or 'sudo apt-get "
+#~ "install -f' in a terminal window."
+#~ msgstr ""
+#~ "Jūsų sistema turi paketų, kurių priklausomybės nėra patenkintos. Įdiegimo "
+#~ "programa neveiks, kol tai nebus ištaisyta. Prašome paleisti „gksu "
+#~ "synaptic“ ar „sudo apt-get install -f“ komandų terminale."
+
+#, python-format
+#~ msgid ""
+#~ "The MIME type of this file is '%s' and can not be installed on this "
+#~ "system."
+#~ msgstr ""
+#~ "Šio paketo MIME tipas yra „%s“ ir todėl jis negali būti įdiegtas jūsų "
+#~ "sistemoje."
+
+#, python-format
+#~ msgid "Could not open '%s'"
+#~ msgstr "Nepavyko atverti „%s“"
+
+#~ msgid ""
+#~ "The package might be corrupted or you are not allowed to open the file. "
+#~ "Check the permissions of the file."
+#~ msgstr ""
+#~ "Paketas gali būti sugadintas arba Jums tiesiog neleidžiama atverti failo. "
+#~ "Patikrinkite failo prieigos teises."
+
+#~ msgid "Same version is available in a software channel"
+#~ msgstr "Ta pati versija yra ir programinės įrangos kanale"
+
+#~ msgid ""
+#~ "You are recommended to install the software from the channel instead."
+#~ msgstr "Patartina diegti programinę įrangą iš programų kanalo."
+
+#~ msgid "An older version is available in a software channel"
+#~ msgstr "Senesnė versija prieinama programų kanale."
+
+#~ msgid ""
+#~ "Generally you are recommended to install the version from the software "
+#~ "channel, since it is usually better supported."
+#~ msgstr ""
+#~ "Jums rekomenduojama diegti programų kanalo versiją, nes ji paprastai yra "
+#~ "geriau palaikoma."
+
+#~ msgid "A later version is available in a software channel"
+#~ msgstr "Naujesnė versija prieinama programų kanale"
+
+#~ msgid ""
+#~ "You are strongly advised to install the version from the software "
+#~ "channel, since it is usually better supported."
+#~ msgstr ""
+#~ "Jums patariama diegti versiją iš programinės įrangos kanalų, nes "
+#~ "paprastai ten ji geriau palaikoma."
+
+#~ msgid "Only one software management tool is allowed to run at the same time"
+#~ msgstr ""
+#~ "Tik vienas programinės įrangos tvarkymo įrankis gali būti paleistas vienu "
+#~ "metu"
+
+#~ msgid ""
+#~ "Please close the other application e.g. 'Update Manager', 'aptitude' or "
+#~ "'Synaptic' first."
+#~ msgstr ""
+#~ "Pirmiausia užverkite kitą programą, pvz., „Atnaujinimų tvarkyklę“, "
+#~ "„aptitude“ arba „Synaptic“."
+
+#, python-format
+#~ msgid "Wrong architecture '%s'"
+#~ msgstr "Netinkama architektūra „%s“"
+
+#~ msgid "Y"
+#~ msgstr "T"
+
+#~ msgid "Open..."
+#~ msgstr "Atidaryti..."
+
+#~ msgid "Software package"
+#~ msgstr "Programinis paketas"
+
+#~ msgid "Analysing dependencies"
+#~ msgstr "Analizuojami šaltiniai"
+
+#, python-format
+#~ msgid "Cannot install '%s'"
+#~ msgstr "Nepavyksta įdiegti „%s“"
+
+#~ msgid "List of files could not be read, please report this as a bug"
+#~ msgstr ""
+#~ "Nepavyko nuskaityti bylų sąrašo, praneškite apie tai kaip apie klaidą"
+
+#~ msgid "<b>"
+#~ msgstr "<b>"
+
+#~ msgid "translator-credits"
+#~ msgstr ""
+#~ "Launchpad Contributions:\n"
+#~ "  Aurimas Fišeras https://launchpad.net/~aurimas-gmail\n"
+#~ "  Jonas Slivka https://launchpad.net/~jonas-slivka\n"
+#~ "  Julius Vitkauskas https://launchpad.net/~julius-vitkauskas\n"
+#~ "  Mantas Kriaučiūnas https://launchpad.net/~mantas\n"
+#~ "  jonas-ska https://launchpad.net/~jonas-ska\n"
+#~ "  netikras https://launchpad.net/~netikras\n"
+#~ "  robas https://launchpad.net/~v-grobas"
+
+#~ msgid ""
+#~ "Malicous software can damage your data and take control of your system.\n"
+#~ "\n"
+#~ "The packages below are not authenticated and could therefor be of "
+#~ "malicous nature."
+#~ msgstr ""
+#~ "Piktadariška programinė įranga gali sugadinti Jūsų duomenis ir užvaldyti "
+#~ "Jūsų sistemą.\n"
+#~ "\n"
+#~ "Žemiau nurodyti paketai nėra patvirtinti, todėl tai gali būti "
+#~ "piktadariškos prigimties programinė įranga."
+
+#~ msgid "Automatically converted to printable ascii:\n"
+#~ msgstr "Automatiškai pakeista į spausdinamą ascii:\n"
+
+#~ msgid ""
+#~ "Breaks existing package '%(pkgname)s' dependency %(depname)s (%"
+#~ "(deprelation)s %(depversion)s)"
+#~ msgstr ""
+#~ "Sugadina egzistuojančio paketo „%(pkgname)s“ priklausomybę %(depname)s (%"
+#~ "(deprelation)s %(depversion)s)"

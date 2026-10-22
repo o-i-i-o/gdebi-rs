@@ -1,0 +1,779 @@
+# Esperanto translation for gdebi
+# Copyright (c) 2010 Rosetta Contributors and Canonical Ltd 2010
+# This file is distributed under the same license as the gdebi package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2010.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: gdebi\n"
+"Report-Msgid-Bugs-To: sebastian.heinlein@web.de\n"
+"POT-Creation-Date: 2026-10-22 14:45+0800\n"
+"PO-Revision-Date: 2011-01-14 11:23+0000\n"
+"Last-Translator: Kristjan SCHMIDT <Unknown>\n"
+"Language-Team: Esperanto <eo@li.org>\n"
+"Language: eo\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Launchpad-Export-Date: 2014-03-12 19:04+0000\n"
+"X-Generator: Launchpad (build 16963)\n"
+
+#: ../crates/gdebi-core/src/depcheck.rs:170
+msgid "No Architecture field in the package"
+msgstr "Neniu arĥitekturo-kampo en la pakaĵo"
+
+#: ../crates/gdebi-core/src/depcheck.rs:180
+#, rust-format
+msgid ""
+"Wrong architecture '{0}' -- Run dpkg --add-architecture to add it and update "
+"afterwards"
+msgstr ""
+
+#: ../crates/gdebi-core/src/depcheck.rs:192
+msgid "A later version is already installed"
+msgstr "Nova versio estas jam instalita"
+
+#: ../crates/gdebi-core/src/depcheck.rs:234
+#, fuzzy, rust-format
+#| msgid "Dependency is not satisfiable: %s\n"
+msgid "Dependency is not satisfiable: {0}\n"
+msgstr "Dependeco ne plenumita: %s\n"
+
+#: ../crates/gdebi-core/src/depcheck.rs:237
+msgid "Failed to satisfy all dependencies (broken cache)"
+msgstr "Fiaskis plenumi ĉiujn dependecojn"
+
+#: ../crates/gdebi-core/src/depcheck.rs:336
+#, fuzzy, rust-format
+#| msgid "Conflicts with the installed package '%s'\n"
+msgid "Conflicts with the installed package '{0}'"
+msgstr "Ĝi konfliktas kun la instalita pakaĵo «%s»\n"
+
+#: ../crates/gdebi-core/src/depcheck.rs:359
+#, fuzzy, rust-format
+#| msgid "Breaks exisiting package '%s' dependency %s (%s %s)\n"
+msgid "Breaks existing package '{0}' dependency {1} ({2} {3})"
+msgstr "Ekzistanta pakaĵo «%s» malobservas la dependecon «%s» (%s %s)\n"
+
+#: ../crates/gdebi-core/src/depcheck.rs:381
+#, fuzzy, rust-format
+#| msgid "Breaks exisiting package '%s' conflict: %s (%s %s)\n"
+msgid "Breaks existing package '{0}' conflict: {1} ({2} {3})"
+msgstr "Ekzistanta pakaĵo «%s» malobservas la konflikton kun «%s» (%s %s)\n"
+
+#: ../crates/gdebi-core/src/depcheck.rs:388
+#, rust-format
+msgid ""
+"Breaks existing package '{0}' that conflict: '{1}'. But the '{2}' provides "
+"it via: '{3}'"
+msgstr ""
+
+#: ../crates/gdebi-core/src/error.rs:31
+#, rust-format
+msgid "cannot open {0}: {1}"
+msgstr ""
+
+#: ../crates/gdebi-core/src/error.rs:33
+#, fuzzy, rust-format
+#| msgid "'%s' is not a Debian package"
+msgid "{0} is not a Debian package"
+msgstr "«%s» ne estas Debiano-pakaĵo"
+
+#: ../crates/gdebi-core/src/error.rs:34
+msgid "control file not found in package"
+msgstr ""
+
+#: ../crates/gdebi-core/src/error.rs:36
+#, rust-format
+msgid "{0} compressed control.tar is not supported yet (only gzip/plain)"
+msgstr ""
+
+#: ../crates/gdebi-core/src/error.rs:39
+#, rust-format
+msgid "missing control field: {0}"
+msgstr ""
+
+#: ../crates/gdebi-core/src/flow.rs:53
+#, rust-format
+msgid "Binary file ({0}), {1} bytes"
+msgstr ""
+
+#: ../crates/gdebi-core/src/flow.rs:54
+#, rust-format
+msgid "Binary file, {0} bytes"
+msgstr ""
+
+#: ../crates/gdebi-core/src/install.rs:47
+#, fuzzy
+#| msgid "IOError during filelist read: %s"
+msgid "Error during install"
+msgstr "IOEraro dum legado de dosierlisto: %s"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:60
+msgid "simple tool to view and install deb files - GTK frontend"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:63
+msgid "Set an APT configuration option"
+msgstr "Ŝalti APT-agordan opcion"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:65
+#, fuzzy
+#| msgid "'%s' is not a Debian package"
+msgid "Debian package to open"
+msgstr "«%s» ne estas Debiano-pakaĵo"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:239
+msgid "Package Installer"
+msgstr "Instalilo de pakaĵoj"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:278
+msgid "_Details"
+msgstr "_Detaloj"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:286
+msgid "Package:"
+msgstr "Pakaĵo:"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:286
+msgid "Status:"
+msgstr "Stato:"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:305
+#: ../crates/gdebi-gtk/src/gtk_app.rs:839
+msgid "_Install Package"
+msgstr "_Instali pakaĵon"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:306
+msgid "_Remove Package"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:334
+msgid "Description"
+msgstr "Priskribo"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:350
+#, fuzzy
+#| msgid "<b>Version:</b>"
+msgid "Version:"
+msgstr "<b>Versio:</b>"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:351
+#, fuzzy
+#| msgid "<b>Maintainer:</b>"
+msgid "Maintainer:"
+msgstr "<b>Bontenanto:</b>"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:352
+#, fuzzy
+#| msgid "<b>Priority:</b>"
+msgid "Priority:"
+msgstr "<b>Prioritato:</b>"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:353
+#, fuzzy
+#| msgid "Description:"
+msgid "Section:"
+msgstr "Priskribo:"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:354
+msgid "Size:"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:365
+msgid "Details"
+msgstr "Detaloj"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:393
+msgid "Included files"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:403
+msgid "Lintian output"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:505
+msgid "Selection is a directory"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:522
+msgid "File content can not be extracted"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:523
+#, rust-format
+msgid "Error reading file content '{0}'"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:534
+msgid "Package control data"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:540
+msgid "Upstream data"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:552
+msgid "Error reading filelist"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:563
+msgid ""
+"No lintian available.\n"
+"Please install using sudo apt-get install lintian"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:567
+msgid "Running lintian..."
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:586
+#, rust-format
+msgid "Failed to run lintian: {0}"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:631
+#, rust-format
+msgid "Lintian finished with exit status {0}"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:643
+msgid "_Open…"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:644
+msgid "_Refresh"
+msgstr "_Renovigi"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:645
+msgid "_Quit"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:647
+msgid "_About"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:649
+msgid "_File"
+msgstr "_Dosiero"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:650
+msgid "_Help"
+msgstr "_Helpo"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:659
+#, fuzzy
+#| msgid "'%s' is not a Debian package"
+msgid "Open Debian package"
+msgstr "«%s» ne estas Debiano-pakaĵo"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:697
+msgid "simple tool to view and install deb files"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:718
+msgid "Loading..."
+msgstr "Ŝarganta..."
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:731
+#, fuzzy, rust-format
+#| msgid "gdebi error, file not found: %s\n"
+msgid "gdebi error, file not found: {0}"
+msgstr "eraro de gdebi, dosiero ne trovita: %s\n"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:745
+#, fuzzy
+#| msgid "Failed to open the software package\n"
+msgid "Could not open the software package"
+msgstr "Fiaskis malfermi la programaran pakaĵon\n"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:768
+msgid "Error opening the cache"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:780
+msgid "Dependency check failed"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:792
+#, rust-format
+msgid "<span foreground=\"red\" weight=\"bold\">Error: {0}</span>"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:806
+#, fuzzy, rust-format
+#| msgid "Requires the <b>removal</b> of %s packages\n"
+msgid "Requires the <b>removal</b> of {0} package"
+msgid_plural "Requires the <b>removal</b> of {0} packages"
+msgstr[0] "Necesas la <b>forigon</b> de %s pakaĵoj\n"
+msgstr[1] "Necesas la <b>forigon</b> de %s pakaĵoj\n"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:817
+#, fuzzy, rust-format
+#| msgid "Requires the installation of %s packages"
+msgid "Requires the installation of {0} package"
+msgid_plural "Requires the installation of {0} packages"
+msgstr[0] "Necesas la instaladon de %s pakaĵoj"
+msgstr[1] "Necesas la instaladon de %s pakaĵoj"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:832
+msgid "Same version is already installed"
+msgstr "Sama versio estas jam instalita"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:834
+msgid "_Reinstall Package"
+msgstr "_Reinstali pakaĵon"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:846
+msgid "All dependencies are satisfied"
+msgstr "Ĉiuj dependecoj estas plenumitaj"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:896
+msgid "Applying changes"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:899
+msgid "Close"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:914
+msgid "Terminal"
+msgstr "Terminalo"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:917
+msgid "Automatically close after the changes have been successfully applied"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1007
+#, fuzzy
+#| msgid "gdebi"
+msgid "gdebi error"
+msgstr "gdebi"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1035
+msgid "Install unauthenticated software?"
+msgstr "Ĉu instali neaŭtentigitan programaron?"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1037
+#, fuzzy, rust-format
+#| msgid "The following packages are UNAUTHENTICATED: "
+msgid "The following packages are UNAUTHENTICATED: {0}"
+msgstr "La sekvaj pakaĵoj estas NEAŬTENTIGITAJ: "
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1047
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1050
+msgid "Installing package file..."
+msgstr "Instalanta pakaĵdosieron"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1051
+msgid "Installation complete"
+msgstr "Instalado kompletiĝita"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1052
+msgid "Failed to install package file"
+msgstr "Fiaskis instali pakaĵdosieron"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1074
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1079
+msgid "Removing package..."
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1080
+msgid "Removal complete"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1081
+msgid "Failed to remove package"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1122
+msgid "You need to grant administrative rights to remove software"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1123
+msgid "It is a possible risk to remove packages."
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1127
+msgid "You need to grant administrative rights to install software"
+msgstr "Vi bezonas aŭtentigi administrajn rajtojn por instali programarojn."
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1129
+#, fuzzy
+#| msgid ""
+#| "\n"
+#| "It is a possible security risk to install packages files manually.\n"
+#| "Install software from trustworthy software distributors only.\n"
+msgid ""
+"It is a possible security risk to install packages files manually.\n"
+"Install software from trustworthy software distributors only."
+msgstr ""
+"\n"
+"Ĝi povus esti ebla risko de sekureco, se vi mane instalas pakaĵdosierojn.\n"
+"Instali programarojn nur de fidindaj distribuantoj de programaroj.\n"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1147
+#, fuzzy
+#| msgid "Failed to open the software package\n"
+msgid "Failed to locate the program executable"
+msgstr "Fiaskis malfermi la programaran pakaĵon\n"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1171
+#, fuzzy
+#| msgid "Failed to install package file"
+msgid "Failed to start pkexec"
+msgstr "Fiaskis instali pakaĵdosieron"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1184
+#, fuzzy, rust-format
+#| msgid "<b>To be removed: %s</b>"
+msgid "<b>To be removed: {0}</b>"
+msgstr "<b>Forigotaj: %s</b>"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1188
+#, fuzzy, rust-format
+#| msgid "To be installed: %s"
+msgid "To be installed: {0}"
+msgstr "Instalotaj: %s"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1196
+#, fuzzy
+#| msgid "Media Change"
+msgid "Changes"
+msgstr "Ŝanĝo de datumportilo"
+
+#, c-format
+#~ msgid ""
+#~ "usage: %prog [options] filename\n"
+#~ "For a graphical version run gdebi-gtk\n"
+#~ msgstr ""
+#~ "uzado: %prog [opcioj] nomdosiero\n"
+#~ "Por grafika versio, ruli gdebi-gtk\n"
+
+#~ msgid "Run non-interactive (dangerous!)"
+#~ msgstr "Ruli sendialoge (danĝere!)"
+
+#~ msgid "Do not show progress information"
+#~ msgstr "Ne montri progresajn informojn"
+
+#~ msgid "Simulate only and print a apt-get install compatible line to stderr"
+#~ msgstr "Nur simuli kaj printi \"apt-get install\"-kongruan linion al stderr"
+
+#~ msgid "Use alternative root dir"
+#~ msgstr "Uzi alternativan radikdosierujon"
+
+#~ msgid "Need to be root to install packages"
+#~ msgstr "Ĉefuzanto necesas por instali pakaĵojn"
+
+#~ msgid "Do you want to install the software package? [y/N]:"
+#~ msgstr "Ĉu vi volas instali la programarpakaĵon? [y/N]:"
+
+#~ msgid "Software index is broken"
+#~ msgstr "Indekso de programaroj estas rompita"
+
+#~ msgid ""
+#~ "This is a major failure of your software management system. Please check "
+#~ "for broken packages with synaptic, check the file permissions and "
+#~ "correctness of the file '/etc/apt/sources.list' and reload the software "
+#~ "information with: 'sudo apt-get update' and 'sudo apt-get install -f'."
+#~ msgstr ""
+#~ "Ĉi tio estas problemo de via administrila sistemo de programaroj. Bonvolu "
+#~ "kontroli por rompitaj pakaĵoj per synaptic, kontroli la dosierajn "
+#~ "permesojn kaj korektecon de la dosiero '/etc/apt/sources.list'  kaj "
+#~ "reŝarĝi la programarajn informojn per 'sudo apt-get update' kaj 'sudo apt-"
+#~ "get install -f'."
+
+#~ msgid "Install and view software packages"
+#~ msgstr "Instali kaj vidi pakaĵojn de programaroj"
+
+#~ msgid "GPL, see /usr/share/common-licenses/GPL"
+#~ msgstr "GPL, vidi /usr/share/common-licenses/GPL"
+
+#~ msgid "<b>To install the following changes are required:</b>"
+#~ msgstr "<b>Por instali, la sekvantaj ŝanĝoj estas necesitaj:</b>"
+
+#~ msgid "<b><big>   </big></b>"
+#~ msgstr "<b><big>   </big></b>"
+
+#~ msgid "<b>Section:</b>"
+#~ msgstr "<b>Sekcio:</b>"
+
+#~ msgid "<b>Size:</b>"
+#~ msgstr "<b>Grandeco:</b>"
+
+#~ msgid "  "
+#~ msgstr "  "
+
+#~ msgid "GDebi Package Installer"
+#~ msgstr "Instalilo de GDebi-pakaĵoj"
+
+#, python-format
+#~ msgid "%s is not available"
+#~ msgstr "%s ne disponeblas"
+
+#~ msgid "Can not download as root"
+#~ msgstr "Ne povas elŝuti kiel ĉefuzanto"
+
+#~ msgid ""
+#~ "Remote packages can not be downloaded when running as root. Please try "
+#~ "again as a normal user."
+#~ msgstr ""
+#~ "Foraj pakaĵoj ne povas esti elŝutitaj kiam rulanta kiel ĉefuzanto. "
+#~ "Bonvolu reprovi kiel normala uzanto."
+
+#~ msgid "Downloading package"
+#~ msgstr "Elŝutanta pakaĵon"
+
+#~ msgid "Download failed"
+#~ msgstr "Fiaskis elŝutado"
+
+#, python-format
+#~ msgid "Downloading the package failed: file '%s' '%s'"
+#~ msgstr "Fiaskis elŝutado de pakaĵoj: dosiero '%s' '%s'"
+
+#, python-format
+#~ msgid "Package Installer - %s"
+#~ msgstr "Instalilo de pakaĵoj - %s"
+
+#~ msgid "Error: "
+#~ msgstr "Eraro: "
+
+#~ msgid "Open Software Package"
+#~ msgstr "Malfermita pakaĵo de programaro"
+
+#~ msgid "Software packages"
+#~ msgstr "Pakaĵoj de programaro"
+
+#~ msgid "File not found"
+#~ msgstr "Dosiero ne trovita"
+
+#~ msgid "You tried to install a file that does not (or no longer) exist. "
+#~ msgstr "Vi klopodis instali dosieron, kiu ne (aŭ ne plu) ekzistas. "
+
+#~ msgid "Could not download all required files"
+#~ msgstr "Ne povis elŝuti ĉiujn necesajn dosierojn"
+
+#~ msgid "Please check your internet connection or installation medium."
+#~ msgstr "Bonvolu kontroli vian retkonekton aŭ instalan datumportilon."
+
+#~ msgid "Could not install all dependencies"
+#~ msgstr "Ne povis instali ĉiujn dependecojn"
+
+#~ msgid ""
+#~ "Usually this is related to an error of the software distributor. See the "
+#~ "terminal window for more details."
+#~ msgstr ""
+#~ "Kutime ĉi tio rilatas al eraro de la programara distribuanto. Vidi la "
+#~ "terminalan fenestron por pli da detaloj."
+
+#, python-format
+#~ msgid "Installing %s"
+#~ msgstr "Instalanta %s"
+
+#~ msgid "Installation finished"
+#~ msgstr "Instalado finita"
+
+#, python-format
+#~ msgid "Package '%s' was installed"
+#~ msgstr "Pakaĵo '%s' estis instalita"
+
+#, python-format
+#~ msgid "Failed to install package '%s'"
+#~ msgstr "Fiaskis instali pakaĵon '%s'"
+
+#~ msgid "Failed to completely install all dependencies"
+#~ msgstr "Fiaskis instali komplete ĉiujn dependecojn"
+
+#~ msgid "To fix this run 'sudo apt-get install -f' in a terminal window."
+#~ msgstr ""
+#~ "Por ripari ĉi tion, ruli 'sudo apt-get install -f' en terminala fenestro."
+
+#, python-format
+#~ msgid "Installing '%s'..."
+#~ msgstr "Instalanta '%s'..."
+
+#~ msgid "Installing dependencies..."
+#~ msgstr "Instalanta dependecojn..."
+
+#~ msgid "Downloading additional package files..."
+#~ msgstr "Elŝutanta aldonajn pakaĵdosierojn..."
+
+#, python-format
+#~ msgid "File %s of %s at %sB/s"
+#~ msgstr "Dosiero %s el %s per %sB/s"
+
+#, python-format
+#~ msgid "File %s of %s"
+#~ msgstr "Dosiero %s el %s"
+
+#, python-format
+#~ msgid "Please insert '%s' into the drive '%s'"
+#~ msgstr "Bonvolu enmeti '%s' en diskilo '%s'"
+
+#~ msgid "Configuration items must be specified with a =<value>\n"
+#~ msgstr "Agordaj elementoj devas esti specifataj per =<valoro>\n"
+
+#, python-format
+#~ msgid "Couldn't set APT option %s to %s\n"
+#~ msgstr "Ne povis agordi APT-opcion %s kiel %s\n"
+
+#, python-format
+#~ msgid "Unknown package type '%s', exiting\n"
+#~ msgstr "Nekonata pakaĵspeco «%s». Eliranta\n"
+
+#~ msgid ""
+#~ "The package might be corrupted or you are not allowed to open the file. "
+#~ "Check the permissions of the file.\n"
+#~ msgstr ""
+#~ "La pakaĵo povus esti difektita aŭ vi ne havas rajtojn por malfermi la "
+#~ "dosieron. Kontroli la permesojn de la dosiero.\n"
+
+#~ msgid "This package is uninstallable\n"
+#~ msgstr "Ĉi tiu pakaĵo ne estas instalebla\n"
+
+#~ msgid "No description is available"
+#~ msgstr "Neniu priskribo disponebla"
+
+#~ msgid "Requires the REMOVAL of the following packages: "
+#~ msgstr "Necesas la FORIGON de la sekvaj pakaĵoj: "
+
+#~ msgid "Requires the installation of the following packages: "
+#~ msgstr "Necesas la instalon de la sekvaj pakaĵoj: "
+
+#~ msgid "Included Files"
+#~ msgstr "Ikluditaj dosieroj"
+
+#~ msgid "&Install Package"
+#~ msgstr "&Instali pakaĵon"
+
+#~ msgid "The package file does not exist"
+#~ msgstr "La pakaĵdosiero ne ekzistas"
+
+#~ msgid ""
+#~ "A nonexistent file has been selected for installation. Please select an "
+#~ "existing .deb package file."
+#~ msgstr ""
+#~ "Neekzistanta dosiero elektiĝis por la instalo. Bonvolu elekti "
+#~ "ekzistantan .deb-pakaĵdosieron."
+
+#~ msgid "&Reinstall Package"
+#~ msgstr "&Reinstali pakaĵon"
+
+#~ msgid "Re&install Package"
+#~ msgstr "Re&instali pakaĵon"
+
+#, python-format
+#~ msgid "To be removed: %s"
+#~ msgstr "Forigota: %s"
+
+#~ msgid "Broken dependencies"
+#~ msgstr "Rompitaj dependecoj"
+
+#~ msgid ""
+#~ "Your system has broken dependencies. This application can not continue "
+#~ "until this is fixed. To fix it run 'gksudo synaptic' or 'sudo apt-get "
+#~ "install -f' in a terminal window."
+#~ msgstr ""
+#~ "Via sistemo enhavas rompitajn dependecojn. La instalado ne povas daŭri "
+#~ "antaŭ ol tio estas riparita. Por ripari ĝin ruli 'gksudo synaptic' aŭ "
+#~ "'sudo apt-get install -f' en terminala fenestro."
+
+#, python-format
+#~ msgid ""
+#~ "The MIME type of this file is '%s' and can not be installed on this "
+#~ "system."
+#~ msgstr ""
+#~ "La MIME-tipo de ĉi tiu dosiero estas «%s» kaj ne povas esti instalata en "
+#~ "ĉi tiu sistemo."
+
+#, python-format
+#~ msgid "Could not open '%s'"
+#~ msgstr "Ne povis malfermi '%s'"
+
+#~ msgid ""
+#~ "The package might be corrupted or you are not allowed to open the file. "
+#~ "Check the permissions of the file."
+#~ msgstr ""
+#~ "La pakaĵo povas esti difektita, aŭ vi ne rajtas malfermi la dosieron. "
+#~ "Bonvolu kontroli la permesojn de la dosiero."
+
+#~ msgid "Same version is available in a software channel"
+#~ msgstr "Sama versio disponeblas en programara kanalo"
+
+#~ msgid ""
+#~ "You are recommended to install the software from the channel instead."
+#~ msgstr "Mi rekomendas vin anstataŭe instali la programarojn el la kanalo."
+
+#~ msgid "An older version is available in a software channel"
+#~ msgstr "Pli malnova versio disponeblas en programara kanalo"
+
+#~ msgid ""
+#~ "Generally you are recommended to install the version from the software "
+#~ "channel, since it is usually better supported."
+#~ msgstr ""
+#~ "Ĝenerale, mi rekomendas vin instali la version el la programara kanalo, "
+#~ "ĉar ĉi tiu kutime estas pli bone subtenata."
+
+#~ msgid "A later version is available in a software channel"
+#~ msgstr "Pli nova versio disponeblas en programara kanalo"
+
+#~ msgid ""
+#~ "You are strongly advised to install the version from the software "
+#~ "channel, since it is usually better supported."
+#~ msgstr ""
+#~ "Vi estas forte rekomendata instali la version el la programara kanalo, "
+#~ "ĉar ĝi estas kutime pli bone subtenata."
+
+#~ msgid "Only one software management tool is allowed to run at the same time"
+#~ msgstr "Vi povas ruli nur unu programaran mastrumilon samtempe"
+
+#~ msgid ""
+#~ "Please close the other application e.g. 'Update Manager', 'aptitude' or "
+#~ "'Synaptic' first."
+#~ msgstr ""
+#~ "Bonvolu fermi la alian aplikaĵon, ekzemple «Aktualiga mastrumilo», "
+#~ "«aptitude» aŭ «Synaptic»."
+
+#~ msgid "translator-credits"
+#~ msgstr ""
+#~ "Launchpad Contributions:\n"
+#~ "  Kristjan SCHMIDT https://launchpad.net/~kristjan-eo\n"
+#~ "  Michael Moroni https://launchpad.net/~airon90\n"
+#~ "  Patrick (Petriko) Oudejans https://launchpad.net/~patrickoudejans"
+
+#~ msgid "Y"
+#~ msgstr "Y"
+
+#~ msgid "Open..."
+#~ msgstr "Malfermi..."
+
+#, python-format
+#~ msgid "Wrong architecture '%s'"
+#~ msgstr "Malkorekta arĥitekturo: '%s'"
+
+#, python-format
+#~ msgid "Cannot install '%s'"
+#~ msgstr "Ne instaleblas '%s'"
+
+#~ msgid "Software package"
+#~ msgstr "Programara pakaĵo"
+
+#~ msgid "Analysing dependencies"
+#~ msgstr "Analizanta dependecojn"
+
+#~ msgid "List of files could not be read, please report this as a bug"
+#~ msgstr "Dosierlisto ne legeblas, bonvolu raporti ĉi tion kiel cimon"
+
+#~ msgid "<b>"
+#~ msgstr "<b>"
+
+#~ msgid ""
+#~ "Malicous software can damage your data and take control of your system.\n"
+#~ "\n"
+#~ "The packages below are not authenticated and could therefor be of "
+#~ "malicous nature."
+#~ msgstr ""
+#~ "Malbonvolemaj programaroj povas damaĝi la datumojn kaj obteni la "
+#~ "kontrolon de la sistemo.\n"
+#~ "\n"
+#~ "La sekvaj pakaĵoj ne estas aŭtentigitaj kaj do povus esti danĝeraj."

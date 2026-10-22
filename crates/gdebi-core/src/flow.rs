@@ -4,6 +4,7 @@ use std::io::Write;
 use std::process::{Command, Stdio};
 
 use crate::debfile::DebFile;
+use crate::i18n::tf;
 
 /// 呈现给用户的包摘要
 #[derive(Debug, Clone)]
@@ -49,8 +50,8 @@ pub fn content_preview(bytes: &[u8]) -> String {
     }
     let size = bytes.len();
     match mime_type(bytes) {
-        Some(mime) => format!("Binary file ({mime}), {size} bytes"),
-        None => format!("Binary file, {size} bytes"),
+        Some(mime) => tf("Binary file ({0}), {1} bytes", &[&mime, &size.to_string()]),
+        None => tf("Binary file, {0} bytes", &[&size.to_string()]),
     }
 }
 

@@ -3,7 +3,7 @@
 //! 菜单栏(File/Help)+ 左侧信息表(Package/Status)+
 //! 右侧动作按钮列 + Notebook(Description/Details)+ 底部缓存进度条与状态栏 +
 //! 安装/移除进度对话框(Terminal expander + autoclose)。
-//! 文案沿用旧版原文(便于未来复用 po 文件)。
+//! 文案沿用旧版原文并经 gettext 国际化(域 gdebi,复用旧版 po,见 core::i18n)。
 //! 安装/移除在后台线程执行,事件经 async-channel 回主线程呈现
 //! (gtk 对象不跨线程,ThreadUi 只负责把事件投入 channel)。
 //!
@@ -15,7 +15,7 @@ use std::process::Command;
 use std::rc::Rc;
 use std::sync::mpsc as std_mpsc;
 
-use clap::Parser;
+use clap::{CommandFactory, FromArgMatches, Parser};
 use gtk4 as gtk;
 use gtk4::prelude::*;
 use gtk4::{
@@ -25,16 +25,14 @@ use gtk4::{
 
 use gdebi_core::depcheck::{Changes, DepChecker, Verdict};
 use gdebi_core::flow::{self, PackageInfo};
+use gdebi_core::i18n;
+use gdebi_core::i18n::{gettext, ngettext, tf};
 use gdebi_core::install;
 use gdebi_core::ui::{AlertKind, InstallProgress, Ui};
 use gdebi_core::{DebFile, GdebiError};
 
 #[derive(Parser)]
-#[command(
-    name = "gdebi-rs-gtk",
-    version,
-    about = "simple tool to view and install deb files - GTK frontend"
-)]
+#[command(name = "gdebi-rs-gtk", version)]
 pub struct Args {
     /// Set an APT configuration option
     #[arg(short = 'o', long = "option")]
@@ -49,7 +47,22 @@ pub struct Args {
     pub remove: bool,
 
     /// 要打开的 .deb 文件
+    #[arg(value_name = "FILE")]
     pub file: Option<PathBuf>,
+}
+
+/// 构建带翻译文案的命令。derive 属性内的字符串不被 xgettext 提取,
+/// about/help 统一在普通调用点经 gettext 注入(调用点即提取点);
+/// 字段 doc 注释仅供开发者,用户可见 help 全部由此覆盖
+fn build_command() -> clap::Command {
+    Args::command()
+        .about(gettext(
+            "simple tool to view and install deb files - GTK frontend",
+        ))
+        .mut_arg("apt_opts", |a| {
+            a.help(gettext("Set an APT configuration option"))
+        })
+        .mut_arg("file", |a| a.help(gettext("Debian package to open")))
 }
 
 // ---------------------------------------------------------------------------
@@ -186,7 +199,11 @@ struct MainWindow {
 }
 
 pub fn run() {
-    let args = Args::parse();
+    // 首次取串(含 clap about)前完成 locale 与消息目录绑定
+    i18n::init();
+    let cmd = build_command();
+    let matches = cmd.get_matches();
+    let args = Args::from_arg_matches(&matches).unwrap_or_else(|e| e.exit());
     let app = Application::builder()
         .application_id("org.debian.gdebi-rs-gtk")
         .build();
@@ -219,7 +236,7 @@ impl Args {
 fn activate(app: &Application, action: LaunchAction) {
     let window = ApplicationWindow::builder()
         .application(app)
-        .title("Package Installer")
+        .title(gettext("Package Installer").as_str())
         .default_width(550)
         .default_height(400)
         // 旧版 gdebi.ui 顶部有 menubar1;GTK4 默认不渲染 app menubar
@@ -258,7 +275,7 @@ fn build_window(
     label_status.set_valign(gtk::Align::Start);
     label_status.set_wrap(true);
     label_status.set_use_markup(true);
-    let button_details = gtk::Button::with_mnemonic("_Details");
+    let button_details = gtk::Button::with_mnemonic(&gettext("_Details"));
 
     let grid = gtk::Grid::builder()
         .column_spacing(12)
@@ -266,8 +283,9 @@ fn build_window(
         .vexpand(true)
         .valign(gtk::Align::Start)
         .build();
-    for (row, text) in [(0, "Package:"), (1, "Status:")] {
-        let l = gtk::Label::new(Some(text));
+    let labels = [(0, gettext("Package:")), (1, gettext("Status:"))];
+    for (row, text) in labels {
+        let l = gtk::Label::new(Some(text.as_str()));
         l.set_halign(gtk::Align::Start);
         l.set_valign(gtk::Align::Start);
         grid.attach(&l, 0, row, 1, 1);
@@ -284,8 +302,8 @@ fn build_window(
 
     // 右侧动作按钮列(旧版 vbox5):Install / Remove
     // (button_download 待远程 deb 下载接入)
-    let button_install = gtk::Button::with_mnemonic("_Install Package");
-    let button_remove = gtk::Button::with_mnemonic("_Remove Package");
+    let button_install = gtk::Button::with_mnemonic(&gettext("_Install Package"));
+    let button_remove = gtk::Button::with_mnemonic(&gettext("_Remove Package"));
     for b in [&button_install, &button_remove] {
         b.set_hexpand(true);
         b.set_sensitive(false);
@@ -313,7 +331,7 @@ fn build_window(
         .cursor_visible(false)
         .wrap_mode(gtk::WrapMode::Word)
         .build();
-    let tab_desc = gtk::Label::new(Some("Description"));
+    let tab_desc = gtk::Label::new(Some(gettext("Description").as_str()));
     let details_version = gtk::Label::default();
     let details_maintainer = gtk::Label::default();
     let details_priority = gtk::Label::default();
@@ -328,14 +346,15 @@ fn build_window(
         .margin_bottom(12)
         .valign(gtk::Align::Start)
         .build();
-    for (row, text, val) in [
-        (0, "Version:", &details_version),
-        (1, "Maintainer:", &details_maintainer),
-        (2, "Priority:", &details_priority),
-        (3, "Section:", &details_section),
-        (4, "Size:", &details_size),
-    ] {
-        let l = gtk::Label::new(Some(text));
+    let details = [
+        (0, gettext("Version:"), &details_version),
+        (1, gettext("Maintainer:"), &details_maintainer),
+        (2, gettext("Priority:"), &details_priority),
+        (3, gettext("Section:"), &details_section),
+        (4, gettext("Size:"), &details_size),
+    ];
+    for (row, text, val) in details {
+        let l = gtk::Label::new(Some(text.as_str()));
         l.set_markup(&format!("<b>{text}</b>"));
         l.set_halign(gtk::Align::Start);
         details_grid.attach(&l, 0, row, 1, 1);
@@ -343,7 +362,7 @@ fn build_window(
         val.set_selectable(true);
         details_grid.attach(val, 1, row, 1, 1);
     }
-    let tab_details = gtk::Label::new(Some("Details"));
+    let tab_details = gtk::Label::new(Some(gettext("Details").as_str()));
     let notebook = gtk::Notebook::new();
     notebook.set_vexpand(true);
     notebook.append_page(&scroll(&textview_description), Some(&tab_desc));
@@ -371,7 +390,7 @@ fn build_window(
         .hexpand(true)
         .vexpand(true)
         .build();
-    let tab_files = gtk::Label::new(Some("Included files"));
+    let tab_files = gtk::Label::new(Some(gettext("Included files").as_str()));
     notebook.append_page(&files_paned, Some(&tab_files));
 
     // Lintian output(旧版 tab4):等宽文本,后台线程填充
@@ -381,7 +400,7 @@ fn build_window(
         .monospace(true)
         .wrap_mode(gtk::WrapMode::None)
         .build();
-    let tab_lintian = gtk::Label::new(Some("Lintian output"));
+    let tab_lintian = gtk::Label::new(Some(gettext("Lintian output").as_str()));
     notebook.append_page(&scroll(&lintian_output), Some(&tab_lintian));
 
     // 底部(旧版 hbox3):progressbar_cache + statusbar_main
@@ -483,7 +502,7 @@ fn on_file_selected(gui: &MainWindow, sel: &gtk::TreeSelection) {
     if name.ends_with('/') {
         gui.file_content
             .buffer()
-            .set_text("Selection is a directory");
+            .set_text(&gettext("Selection is a directory"));
         return;
     }
     let content = match group {
@@ -500,8 +519,8 @@ fn on_file_selected(gui: &MainWindow, sel: &gtk::TreeSelection) {
     // 文本原样显示;二进制显示文件类型(core 统一判定,规避内嵌 NUL)
     let text = match content {
         Ok(bytes) if !bytes.is_empty() => flow::content_preview(&bytes),
-        Ok(_) => "File content can not be extracted".to_string(),
-        Err(e) => format!("Error reading file content '{e}'"),
+        Ok(_) => gettext("File content can not be extracted"),
+        Err(e) => tf("Error reading file content '{0}'", &[&e.to_string()]),
     };
     gui.file_content.buffer().set_text(&text);
 }
@@ -512,13 +531,13 @@ fn fill_files(gui: &MainWindow, deb: &DebFile) {
     let res = (|| -> Result<(), GdebiError> {
         // 组 0:Package control data;组 1:Upstream data(旧版原文)
         let control_header = store.append(None);
-        store.set(&control_header, &[(0, &"Package control data")]);
+        store.set(&control_header, &[(0, &gettext("Package control data"))]);
         for n in deb.control_filelist()? {
             let child = store.append(Some(&control_header));
             store.set(&child, &[(0, &n)]);
         }
         let data_header = store.append(None);
-        store.set(&data_header, &[(0, &"Upstream data")]);
+        store.set(&data_header, &[(0, &gettext("Upstream data"))]);
         for n in deb.data_filelist()? {
             let child = store.append(Some(&data_header));
             store.set(&child, &[(0, &n)]);
@@ -530,7 +549,7 @@ fn fill_files(gui: &MainWindow, deb: &DebFile) {
         eprintln!("Exception while reading the filelist: '{e}'");
         store.clear();
         let iter = store.append(None);
-        store.set(&iter, &[(0, &"Error reading filelist")]);
+        store.set(&iter, &[(0, &gettext("Error reading filelist"))]);
     }
     gui.tree_files.set_model(Some(&store));
     gui.tree_files.expand_all();
@@ -540,10 +559,12 @@ fn fill_files(gui: &MainWindow, deb: &DebFile) {
 fn run_lintian(gui: &MainWindow, file: &Path) {
     let buf = gui.lintian_output.buffer();
     if !Path::new("/usr/bin/lintian").exists() {
-        buf.set_text("No lintian available.\nPlease install using sudo apt-get install lintian");
+        buf.set_text(&gettext(
+            "No lintian available.\nPlease install using sudo apt-get install lintian",
+        ));
         return;
     }
-    buf.set_text("Running lintian...");
+    buf.set_text(&gettext("Running lintian..."));
 
     enum LintianEvent {
         Line(String),
@@ -561,7 +582,10 @@ fn run_lintian(gui: &MainWindow, file: &Path) {
             Ok(c) => c,
             Err(e) => {
                 let _ = tx
-                    .send_blocking(LintianEvent::Line(format!("Failed to run lintian: {e}")));
+                    .send_blocking(LintianEvent::Line(tf(
+                        "Failed to run lintian: {0}",
+                        &[&e.to_string()],
+                    )));
                 let _ = tx.send_blocking(LintianEvent::Finished(-1));
                 return;
             }
@@ -602,7 +626,10 @@ fn run_lintian(gui: &MainWindow, file: &Path) {
                 LintianEvent::Finished(code) => {
                     let buf = view.buffer();
                     let mut end = buf.end_iter();
-                    buf.insert(&mut end, &format!("\nLintian finished with exit status {code}"));
+                    buf.insert(
+                        &mut end,
+                        &format!("\n{}", tf("Lintian finished with exit status {0}", &[&code.to_string()])),
+                    );
                     break;
                 }
             }
@@ -613,14 +640,14 @@ fn run_lintian(gui: &MainWindow, file: &Path) {
 fn setup_actions(app: &Application, gui: &Rc<MainWindow>) {
     // 菜单栏(旧版 menubar1:File: Open…/Refresh/Quit;Help: About)
     let file_menu = gio::Menu::new();
-    file_menu.append(Some("_Open…"), Some("app.open"));
-    file_menu.append(Some("_Refresh"), Some("app.refresh"));
-    file_menu.append(Some("_Quit"), Some("app.quit"));
+    file_menu.append(Some(gettext("_Open…").as_str()), Some("app.open"));
+    file_menu.append(Some(gettext("_Refresh").as_str()), Some("app.refresh"));
+    file_menu.append(Some(gettext("_Quit").as_str()), Some("app.quit"));
     let help_menu = gio::Menu::new();
-    help_menu.append(Some("_About"), Some("app.about"));
+    help_menu.append(Some(gettext("_About").as_str()), Some("app.about"));
     let menubar = gio::Menu::new();
-    menubar.append_submenu(Some("_File"), &file_menu);
-    menubar.append_submenu(Some("_Help"), &help_menu);
+    menubar.append_submenu(Some(gettext("_File").as_str()), &file_menu);
+    menubar.append_submenu(Some(gettext("_Help").as_str()), &help_menu);
     app.set_menubar(Some(&menubar));
 
     let open = gio::SimpleAction::new("open", None);
@@ -629,7 +656,7 @@ fn setup_actions(app: &Application, gui: &Rc<MainWindow>) {
         let chooser = FileChooserNative::builder()
             .action(gtk::FileChooserAction::Open)
             .transient_for(&gui_open.window)
-            .title("Open Debian package")
+            .title(gettext("Open Debian package").as_str())
             .build();
         let gui_fc = gui_open.clone();
         chooser.connect_response(move |c, resp| {
@@ -667,7 +694,7 @@ fn setup_actions(app: &Application, gui: &Rc<MainWindow>) {
             .modal(true)
             .program_name("gdebi-rs")
             .version(env!("CARGO_PKG_VERSION"))
-            .comments("simple tool to view and install deb files")
+            .comments(gettext("simple tool to view and install deb files").as_str())
             .build();
         dlg.present();
     });
@@ -688,7 +715,7 @@ fn scroll(w: &impl IsA<gtk::Widget>) -> gtk::ScrolledWindow {
 
 /// 打开并填充窗口(旧版 set_deb;同步执行,与旧版相同的短暂阻塞)
 fn load_deb(gui: &Rc<MainWindow>, file: &Path) {
-    gui.statusbar.push(gui.status_ctx, "Loading...");
+    gui.statusbar.push(gui.status_ctx, gettext("Loading...").as_str());
     let ui = GtkUi {
         parent: gui.window.clone().upcast(),
     };
@@ -700,7 +727,10 @@ fn load_deb(gui: &Rc<MainWindow>, file: &Path) {
         show_alert(
             &gui.window,
             AlertKind::Error,
-            &format!("gdebi error, file not found: {}", file.display()),
+            &tf(
+                "gdebi error, file not found: {0}",
+                &[&file.display().to_string()],
+            ),
             None,
         );
         gui.statusbar.pop(gui.status_ctx);
@@ -712,7 +742,7 @@ fn load_deb(gui: &Rc<MainWindow>, file: &Path) {
         Err(e) => {
             let _ = ui.alert(
                 AlertKind::Error,
-                "Could not open the software package",
+                &gettext("Could not open the software package"),
                 Some(&e.to_string()),
             );
             gui.statusbar.pop(gui.status_ctx);
@@ -735,7 +765,7 @@ fn load_deb(gui: &Rc<MainWindow>, file: &Path) {
         Err(e) => {
             let _ = ui.alert(
                 AlertKind::Error,
-                "Error opening the cache",
+                &gettext("Error opening the cache"),
                 Some(&e.to_string()),
             );
             gui.statusbar.pop(gui.status_ctx);
@@ -747,7 +777,7 @@ fn load_deb(gui: &Rc<MainWindow>, file: &Path) {
         Err(e) => {
             let _ = ui.alert(
                 AlertKind::Error,
-                "Dependency check failed",
+                &gettext("Dependency check failed"),
                 Some(&e.to_string()),
             );
             gui.statusbar.pop(gui.status_ctx);
@@ -758,9 +788,9 @@ fn load_deb(gui: &Rc<MainWindow>, file: &Path) {
     match verdict {
         Verdict::Uninstallable(failure) => {
             // 旧版 check 失败分支:红色错误 + install 禁用 + details 隐藏
-            gui.label_status.set_markup(&format!(
-                "<span foreground=\"red\" weight=\"bold\">Error: {}</span>",
-                glib::markup_escape_text(&failure)
+            gui.label_status.set_markup(&tf(
+                "<span foreground=\"red\" weight=\"bold\">Error: {0}</span>",
+                &[&glib::markup_escape_text(&failure)],
             ));
             gui.button_install.set_sensitive(false);
             gui.button_details.hide();
@@ -768,19 +798,29 @@ fn load_deb(gui: &Rc<MainWindow>, file: &Path) {
         }
         Verdict::Installable(changes) => {
             let (inst, rm) = (&changes.install, &changes.remove);
-            // 旧版 get_changes 的 deps markup
+            // 旧版 get_changes 的 deps markup(ngettext 处理复数)
             let mut deps = String::new();
             if !rm.is_empty() {
-                deps.push_str(&format!(
-                    "Requires the <b>removal</b> of {} packages\n",
-                    rm.len()
+                deps.push_str(&tf(
+                    &ngettext(
+                        "Requires the <b>removal</b> of {0} package",
+                        "Requires the <b>removal</b> of {0} packages",
+                        rm.len() as u32,
+                    ),
+                    &[&rm.len().to_string()],
                 ));
+                deps.push('\n');
             }
             if !inst.is_empty() {
-                deps.push_str(&format!(
-                    "Requires the installation of {} packages\n",
-                    inst.len()
+                deps.push_str(&tf(
+                    &ngettext(
+                        "Requires the installation of {0} package",
+                        "Requires the installation of {0} packages",
+                        inst.len() as u32,
+                    ),
+                    &[&inst.len().to_string()],
                 ));
+                deps.push('\n');
             }
 
             let same_installed =
@@ -788,19 +828,22 @@ fn load_deb(gui: &Rc<MainWindow>, file: &Path) {
 
             if same_installed {
                 // 旧版同版本分支:状态文案 + Reinstall + Remove 显示
-                gui.label_status.set_text("Same version is already installed");
-                gui.button_install.set_label("_Reinstall Package");
+                gui.label_status
+                    .set_text(&gettext("Same version is already installed"));
+                gui.button_install
+                    .set_label(&gettext("_Reinstall Package"));
                 gui.button_remove.set_visible(true);
                 gui.button_remove.set_sensitive(true);
                 gui.button_details.hide();
             } else {
-                gui.button_install.set_label("_Install Package");
+                gui.button_install.set_label(&gettext("_Install Package"));
                 gui.button_remove.hide();
                 if !rm.is_empty() || !inst.is_empty() {
                     gui.label_status.set_markup(&deps);
                     gui.button_details.show();
                 } else {
-                    gui.label_status.set_text("All dependencies are satisfied");
+                    gui.label_status
+                        .set_text(&gettext("All dependencies are satisfied"));
                     gui.button_details.hide();
                 }
             }
@@ -850,10 +893,10 @@ fn run_action_dialog(
     let dialog = gtk::Dialog::builder()
         .transient_for(&gui.window)
         .modal(true)
-        .title("Applying changes")
+        .title(gettext("Applying changes").as_str())
         .default_width(480)
         .build();
-    dialog.add_button("Close", ResponseType::Close);
+    dialog.add_button(&gettext("Close"), ResponseType::Close);
     dialog.set_default_response(ResponseType::Close);
 
     let label_action = gtk::Label::new(Some(action));
@@ -868,11 +911,11 @@ fn run_action_dialog(
         .cursor_visible(false)
         .monospace(true)
         .build();
-    let exp = gtk::Expander::new(Some("Terminal"));
+    let exp = gtk::Expander::new(Some(gettext("Terminal").as_str()));
     exp.set_child(Some(&scroll(&textview)));
-    let autoclose = gtk::CheckButton::with_label(
+    let autoclose = gtk::CheckButton::with_label(&gettext(
         "Automatically close after the changes have been successfully applied",
-    );
+    ));
     autoclose.set_active(true);
     autoclose.set_halign(gtk::Align::Start);
 
@@ -958,7 +1001,12 @@ fn run_action_dialog(
                         }
                         Err(e) => {
                             statusbar.push(ctx, &failed);
-                            show_alert(&window, AlertKind::Error, "gdebi error", Some(&e));
+                            show_alert(
+                                &window,
+                                AlertKind::Error,
+                                &gettext("gdebi error"),
+                                Some(&e),
+                            );
                         }
                     }
                     window.set_sensitive(true);
@@ -984,10 +1032,10 @@ fn on_install_clicked(gui: &Rc<MainWindow>) {
             parent: gui.window.clone().upcast(),
         };
         let ok = ui.confirm(
-            "Install unauthenticated software?",
-            Some(&format!(
-                "The following packages are UNAUTHENTICATED: {}",
-                c.unauthenticated.join(" ")
+            &gettext("Install unauthenticated software?"),
+            Some(&tf(
+                "The following packages are UNAUTHENTICATED: {0}",
+                &[&c.unauthenticated.join(" ")],
             )),
         );
         match ok {
@@ -995,12 +1043,13 @@ fn on_install_clicked(gui: &Rc<MainWindow>) {
             _ => return,
         }
     }
-    gui.statusbar.push(gui.status_ctx, "Installing package file...");
+    gui.statusbar
+        .push(gui.status_ctx, gettext("Installing package file...").as_str());
     run_action_dialog(
         gui,
-        "Installing package file...",
-        "Installation complete".to_string(),
-        "Failed to install package file".to_string(),
+        &gettext("Installing package file..."),
+        gettext("Installation complete").to_string(),
+        gettext("Failed to install package file").to_string(),
         Box::new(move |ui, changes, file, opts| {
             install::install(ui, ui, changes, file, opts)
         }),
@@ -1021,14 +1070,15 @@ fn on_remove_clicked(gui: &Rc<MainWindow>) {
     else {
         return;
     };
-    gui.statusbar.push(gui.status_ctx, "Removing package...");
+    gui.statusbar
+        .push(gui.status_ctx, gettext("Removing package...").as_str());
     // 旧版 dpkg_action(install=False) 经 apt 提交(级联处理依赖);
     // 骨架期直接 dpkg -r(不级联,最小影响)
     run_action_dialog(
         gui,
-        "Removing package...",
-        "Removal complete".to_string(),
-        "Failed to remove package".to_string(),
+        &gettext("Removing package..."),
+        gettext("Removal complete").to_string(),
+        gettext("Failed to remove package").to_string(),
         Box::new(move |ui, _changes, _file, _opts| {
             use std::io::BufRead;
             use std::process::{Command, Stdio};
@@ -1069,19 +1119,21 @@ fn is_root() -> bool {
 fn request_privileges(gui: &Rc<MainWindow>, remove: bool) -> bool {
     let (header, body) = if remove {
         (
-            "You need to grant administrative rights to remove software",
-            "It is a possible risk to remove packages.",
+            gettext("You need to grant administrative rights to remove software"),
+            gettext("It is a possible risk to remove packages."),
         )
     } else {
         (
-            "You need to grant administrative rights to install software",
-            "It is a possible security risk to install packages files manually.\nInstall software from trustworthy software distributors only.",
+            gettext("You need to grant administrative rights to install software"),
+            gettext(
+                "It is a possible security risk to install packages files manually.\nInstall software from trustworthy software distributors only.",
+            ),
         )
     };
     let ui = GtkUi {
         parent: gui.window.clone().upcast(),
     };
-    match ui.confirm(header, Some(body)) {
+    match ui.confirm(&header, Some(&body)) {
         Ok(true) => {}
         _ => return false,
     }
@@ -1092,7 +1144,7 @@ fn request_privileges(gui: &Rc<MainWindow>, remove: bool) -> bool {
             show_alert(
                 &gui.window,
                 AlertKind::Error,
-                "Failed to locate the program executable",
+                &gettext("Failed to locate the program executable"),
                 Some(&e.to_string()),
             );
             return false;
@@ -1116,7 +1168,7 @@ fn request_privileges(gui: &Rc<MainWindow>, remove: bool) -> bool {
     show_alert(
         &gui.window,
         AlertKind::Error,
-        "Failed to start pkexec",
+        &gettext("Failed to start pkexec"),
         Some(&e.to_string()),
     );
     false
@@ -1129,17 +1181,19 @@ fn show_details<W: IsA<gtk::Window>>(
 ) {
     let mut list = String::new();
     for r in remove {
-        list.push_str(&format!("<b>To be removed: {r}</b>\n"));
+        list.push_str(&tf("<b>To be removed: {0}</b>", &[r]));
+        list.push('\n');
     }
     for i in install {
-        list.push_str(&format!("To be installed: {i}\n"));
+        list.push_str(&tf("To be installed: {0}", &[i]));
+        list.push('\n');
     }
     let dlg = MessageDialog::builder()
         .transient_for(parent)
         .modal(true)
         .message_type(MessageType::Info)
         .buttons(ButtonsType::Close)
-        .text("Changes")
+        .text(gettext("Changes").as_str())
         .build();
     dlg.set_secondary_text(Some(&list));
     dlg.set_secondary_use_markup(true);

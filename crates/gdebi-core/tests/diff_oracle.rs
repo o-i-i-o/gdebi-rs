@@ -14,10 +14,10 @@ use std::process::Command;
 use gdebi_core::depcheck::{Changes, DepChecker, Verdict};
 use gdebi_core::{DebFile, GdebiError};
 
-/// 仓库根(crates/gdebi-core → gdebi-rs → gdebi)
+/// 仓库根(crates/gdebi-core → gdebi-rs)
 fn repo_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../..")
+        .join("../..")
         .canonicalize()
         .expect("repo root exists")
 }
@@ -42,6 +42,16 @@ fn oracle_available() -> bool {
         .output()
         .map(|o| o.status.success())
         .unwrap_or(false)
+}
+
+/// 钉住 C locale:本机可能装有旧版 gdebi.mo(如系统包),gettext 会命中
+/// 翻译并破坏英文基线;须在进程内首次 gettext 调用前设置(与 oracle 的
+/// LC_ALL=C 归一化同理,见 oracle_apt_line)
+fn pin_c_locale() {
+    unsafe {
+        std::env::set_var("LC_ALL", "C");
+        std::env::set_var("LANGUAGE", "C");
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -120,7 +130,8 @@ fn our_apt_line(deb: &Path) -> (String, String, i32) {
 fn oracle_apt_line(deb: &Path) -> Option<(String, String, i32)> {
     let root = repo_root();
     Command::new("python3")
-        .arg(root.join("gdebi"))
+        // 旧版 CLI 脚本在参考目录内(gdebi-rs/gdebi/gdebi)
+        .arg(root.join("gdebi").join("gdebi"))
         .arg("--apt-line")
         .arg("-q")
         .arg(deb)
@@ -140,6 +151,7 @@ fn oracle_apt_line(deb: &Path) -> Option<(String, String, i32)> {
 
 #[test]
 fn tier_b_apt_line_semantics_match_old_gdebi() {
+    pin_c_locale();
     if !oracle_available() {
         eprintln!("skip: python3-apt unavailable, oracle disabled");
         return;
@@ -177,6 +189,7 @@ fn changes_lines_consistent() {
 /// GdebiError 展示冒烟(错误串英文,保持 gettext msgid 就绪)
 #[test]
 fn error_messages_in_english() {
+    pin_c_locale();
     let e = GdebiError::MissingControl;
     assert_eq!(e.to_string(), "control file not found in package");
 }

@@ -1,0 +1,433 @@
+# Tagalog translation for gdebi
+# Copyright (c) (c) 2006 Canonical Ltd, and Rosetta Contributors 2006
+# This file is distributed under the same license as the gdebi package.
+# Ealden Esto E. Escañan <ealden@gmail.com>, 2006.
+# , fuzzy
+#
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: gdebi\n"
+"Report-Msgid-Bugs-To: sebastian.heinlein@web.de\n"
+"POT-Creation-Date: 2026-10-22 14:45+0800\n"
+"PO-Revision-Date: 2009-11-06 19:50+0000\n"
+"Last-Translator: Irvin Piraman <ipp@thefluxproject.com>\n"
+"Language-Team: Tagalog <tl@li.org>\n"
+"Language: tl\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Launchpad-Export-Date: 2013-08-03 22:48+0000\n"
+"X-Generator: Launchpad (build 16718)\n"
+
+#: ../crates/gdebi-core/src/depcheck.rs:170
+msgid "No Architecture field in the package"
+msgstr ""
+
+#: ../crates/gdebi-core/src/depcheck.rs:180
+#, rust-format
+msgid ""
+"Wrong architecture '{0}' -- Run dpkg --add-architecture to add it and update "
+"afterwards"
+msgstr ""
+
+#: ../crates/gdebi-core/src/depcheck.rs:192
+msgid "A later version is already installed"
+msgstr ""
+
+#: ../crates/gdebi-core/src/depcheck.rs:234
+#, rust-format
+msgid "Dependency is not satisfiable: {0}\n"
+msgstr ""
+
+#: ../crates/gdebi-core/src/depcheck.rs:237
+msgid "Failed to satisfy all dependencies (broken cache)"
+msgstr ""
+
+#: ../crates/gdebi-core/src/depcheck.rs:336
+#, rust-format
+msgid "Conflicts with the installed package '{0}'"
+msgstr ""
+
+#: ../crates/gdebi-core/src/depcheck.rs:359
+#, rust-format
+msgid "Breaks existing package '{0}' dependency {1} ({2} {3})"
+msgstr ""
+
+#: ../crates/gdebi-core/src/depcheck.rs:381
+#, rust-format
+msgid "Breaks existing package '{0}' conflict: {1} ({2} {3})"
+msgstr ""
+
+#: ../crates/gdebi-core/src/depcheck.rs:388
+#, rust-format
+msgid ""
+"Breaks existing package '{0}' that conflict: '{1}'. But the '{2}' provides "
+"it via: '{3}'"
+msgstr ""
+
+#: ../crates/gdebi-core/src/error.rs:31
+#, rust-format
+msgid "cannot open {0}: {1}"
+msgstr ""
+
+#: ../crates/gdebi-core/src/error.rs:33
+#, rust-format
+msgid "{0} is not a Debian package"
+msgstr ""
+
+#: ../crates/gdebi-core/src/error.rs:34
+msgid "control file not found in package"
+msgstr ""
+
+#: ../crates/gdebi-core/src/error.rs:36
+#, rust-format
+msgid "{0} compressed control.tar is not supported yet (only gzip/plain)"
+msgstr ""
+
+#: ../crates/gdebi-core/src/error.rs:39
+#, rust-format
+msgid "missing control field: {0}"
+msgstr ""
+
+#: ../crates/gdebi-core/src/flow.rs:53
+#, rust-format
+msgid "Binary file ({0}), {1} bytes"
+msgstr ""
+
+#: ../crates/gdebi-core/src/flow.rs:54
+#, rust-format
+msgid "Binary file, {0} bytes"
+msgstr ""
+
+#: ../crates/gdebi-core/src/install.rs:47
+msgid "Error during install"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:60
+msgid "simple tool to view and install deb files - GTK frontend"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:63
+msgid "Set an APT configuration option"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:65
+msgid "Debian package to open"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:239
+msgid "Package Installer"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:278
+msgid "_Details"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:286
+msgid "Package:"
+msgstr "Pakete:"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:286
+msgid "Status:"
+msgstr "Estado:"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:305
+#: ../crates/gdebi-gtk/src/gtk_app.rs:839
+msgid "_Install Package"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:306
+msgid "_Remove Package"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:334
+msgid "Description"
+msgstr "Paglalarawan"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:350
+msgid "Version:"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:351
+msgid "Maintainer:"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:352
+msgid "Priority:"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:353
+#, fuzzy
+#| msgid "Description"
+msgid "Section:"
+msgstr "Paglalarawan"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:354
+msgid "Size:"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:365
+msgid "Details"
+msgstr "Detalye"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:393
+msgid "Included files"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:403
+msgid "Lintian output"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:505
+msgid "Selection is a directory"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:522
+msgid "File content can not be extracted"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:523
+#, rust-format
+msgid "Error reading file content '{0}'"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:534
+msgid "Package control data"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:540
+msgid "Upstream data"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:552
+msgid "Error reading filelist"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:563
+msgid ""
+"No lintian available.\n"
+"Please install using sudo apt-get install lintian"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:567
+msgid "Running lintian..."
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:586
+#, rust-format
+msgid "Failed to run lintian: {0}"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:631
+#, rust-format
+msgid "Lintian finished with exit status {0}"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:643
+msgid "_Open…"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:644
+msgid "_Refresh"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:645
+msgid "_Quit"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:647
+msgid "_About"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:649
+msgid "_File"
+msgstr "_Talaksan"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:650
+msgid "_Help"
+msgstr "_Tulong"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:659
+msgid "Open Debian package"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:697
+msgid "simple tool to view and install deb files"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:718
+msgid "Loading..."
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:731
+#, rust-format
+msgid "gdebi error, file not found: {0}"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:745
+msgid "Could not open the software package"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:768
+msgid "Error opening the cache"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:780
+msgid "Dependency check failed"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:792
+#, rust-format
+msgid "<span foreground=\"red\" weight=\"bold\">Error: {0}</span>"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:806
+#, rust-format
+msgid "Requires the <b>removal</b> of {0} package"
+msgid_plural "Requires the <b>removal</b> of {0} packages"
+msgstr[0] ""
+msgstr[1] ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:817
+#, rust-format
+msgid "Requires the installation of {0} package"
+msgid_plural "Requires the installation of {0} packages"
+msgstr[0] ""
+msgstr[1] ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:832
+msgid "Same version is already installed"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:834
+msgid "_Reinstall Package"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:846
+msgid "All dependencies are satisfied"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:896
+msgid "Applying changes"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:899
+msgid "Close"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:914
+msgid "Terminal"
+msgstr "Terminal"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:917
+msgid "Automatically close after the changes have been successfully applied"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1007
+#, fuzzy
+#| msgid "gdebi"
+msgid "gdebi error"
+msgstr "gdebi"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1035
+msgid "Install unauthenticated software?"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1037
+#, rust-format
+msgid "The following packages are UNAUTHENTICATED: {0}"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1047
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1050
+msgid "Installing package file..."
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1051
+msgid "Installation complete"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1052
+msgid "Failed to install package file"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1074
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1079
+msgid "Removing package..."
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1080
+msgid "Removal complete"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1081
+msgid "Failed to remove package"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1122
+msgid "You need to grant administrative rights to remove software"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1123
+msgid "It is a possible risk to remove packages."
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1127
+msgid "You need to grant administrative rights to install software"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1129
+msgid ""
+"It is a possible security risk to install packages files manually.\n"
+"Install software from trustworthy software distributors only."
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1147
+msgid "Failed to locate the program executable"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1171
+msgid "Failed to start pkexec"
+msgstr ""
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1184
+#, fuzzy, rust-format
+#| msgid "<b>To be removed: %s</b>"
+msgid "<b>To be removed: {0}</b>"
+msgstr "<b>Mga tatangalin: %s</b>"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1188
+#, fuzzy, rust-format
+#| msgid "To be installed: %s"
+msgid "To be installed: {0}"
+msgstr "Mga ilalagay: %s"
+
+#: ../crates/gdebi-gtk/src/gtk_app.rs:1196
+msgid "Changes"
+msgstr ""
+
+#~ msgid "GPL, see /usr/share/common-licenses/GPL"
+#~ msgstr "GPL, tingnan ang /usr/share/common-licenses/GPL"
+
+#~ msgid "  "
+#~ msgstr "  "
+
+#, python-format
+#~ msgid "Installing %s"
+#~ msgstr "Inilalagay %s"
+
+#, python-format
+#~ msgid "Please insert '%s' into the drive '%s'"
+#~ msgstr "Pakipasok ang '%s' sa drive '%s'"
+
+#, python-format
+#~ msgid "Wrong architecture '%s'"
+#~ msgstr "Maling arkitektura '%s'"
+
+#~ msgid "translator-credits"
+#~ msgstr ""
+#~ "Launchpad Contributions:\n"
+#~ "  Ealden Escañan https://launchpad.net/~ealden\n"
+#~ "  Irvin Piraman https://launchpad.net/~ippiraman\n"
+#~ "  Jerome S. Gotangco https://launchpad.net/~jsgotangco"

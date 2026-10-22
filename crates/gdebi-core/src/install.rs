@@ -14,6 +14,7 @@ use std::sync::mpsc;
 
 use crate::depcheck::Changes;
 use crate::error::GdebiError;
+use crate::i18n::gettext;
 use crate::ui::{AlertKind, InstallProgress, Ui};
 
 /// 执行安装,返回进程退出码(dpkg 透传;依赖提交失败为 1)。
@@ -43,11 +44,7 @@ pub fn install(
         forward_output(&mut child, progress);
         if !child.wait()?.success() {
             // 旧版:Error during install: '<e>' → 返回 1
-            let _ = ui.alert(
-                AlertKind::Error,
-                "Error during install",
-                None,
-            );
+            let _ = ui.alert(AlertKind::Error, &gettext("Error during install"), None);
             return Ok(1);
         }
     }

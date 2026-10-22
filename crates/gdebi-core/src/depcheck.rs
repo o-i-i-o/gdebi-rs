@@ -21,6 +21,7 @@ use std::path::Path;
 use std::process::Command;
 
 use crate::debfile::DebFile;
+use crate::i18n::{gettext, tf};
 use crate::version::cmp_version;
 use crate::GdebiError;
 
@@ -165,9 +166,9 @@ impl DepChecker {
         let arch = match deb.field_trimmed("Architecture") {
             Some(a) => a.to_string(),
             None => {
-                return Ok(Verdict::Uninstallable(
-                    "No Architecture field in the package".into(),
-                ))
+                return Ok(Verdict::Uninstallable(gettext(
+                    "No Architecture field in the package",
+                )))
             }
         };
         let mut pkgname = pkgname_raw.to_string();
@@ -175,10 +176,10 @@ impl DepChecker {
             if self.foreign_arches.contains(&arch) {
                 pkgname = format!("{}:{}", pkgname_raw, arch);
             } else {
-                return Ok(Verdict::Uninstallable(format!(
-                    "Wrong architecture '{}' -- Run dpkg --add-architecture to \
+                return Ok(Verdict::Uninstallable(tf(
+                    "Wrong architecture '{0}' -- Run dpkg --add-architecture to \
                      add it and update afterwards",
-                    arch
+                    &[&arch],
                 )));
             }
         }
@@ -187,9 +188,9 @@ impl DepChecker {
         if let Some(&i) = self.index.get(&format!("{}:{}", pkgname_raw, arch))
             && cmp_version(&self.installed[i].version, version) == Ordering::Greater
         {
-            return Ok(Verdict::Uninstallable(
-                "A later version is already installed".into(),
-            ));
+            return Ok(Verdict::Uninstallable(gettext(
+                "A later version is already installed",
+            )));
         }
 
         let conflicts = parse_depends(field(deb, "Conflicts"));
@@ -229,8 +230,12 @@ impl DepChecker {
             // 中间包破坏等其它失败对齐到 broken cache 文案
             let expr = parse_new_solver(&stderr, pkgname_raw).or_else(|| parse_old_solver(&stderr, pkgname_raw));
             match expr {
-                Some(expr) => failure.push_str(&format!("Dependency is not satisfiable: {expr}\n")),
-                None => failure.push_str("Failed to satisfy all dependencies (broken cache)"),
+                Some(expr) => {
+                    failure.push_str(&tf("Dependency is not satisfiable: {0}\n", &[expr.as_str()]))
+                }
+                None => failure.push_str(&gettext(
+                    "Failed to satisfy all dependencies (broken cache)",
+                )),
             }
             return Ok(Verdict::Uninstallable(failure));
         }
@@ -328,7 +333,7 @@ impl DepChecker {
         failure: &mut String,
     ) -> bool {
         if check_dep(ver, &dep.oper, &dep.ver) && !replaces_real(replaces, name, ver) {
-            failure.push_str(&format!("Conflicts with the installed package '{name}'"));
+            failure.push_str(&tf("Conflicts with the installed package '{0}'", &[name]));
             true
         } else {
             false
@@ -350,9 +355,9 @@ impl DepChecker {
             for group in parse_depends(&pkg.depends_raw) {
                 for d in &group {
                     if d.name == pkgname && !check_dep(version, &d.oper, &d.ver) {
-                        failure.push_str(&format!(
-                            "Breaks existing package '{}' dependency {} ({} {})",
-                            pkg.name, d.name, d.oper, d.ver
+                        failure.push_str(&tf(
+                            "Breaks existing package '{0}' dependency {1} ({2} {3})",
+                            &[&pkg.name, &d.name, &d.oper, &d.ver],
                         ));
                         return true;
                     }
@@ -372,20 +377,22 @@ impl DepChecker {
                         && target_arch == arch
                         && check_dep(version, &c.oper, &c.ver)
                     {
-                        failure.push_str(&format!(
-                            "Breaks existing package '{}' conflict: {} ({} {})",
-                            pkg.name, c.name, c.oper, c.ver
+                        failure.push_str(&tf(
+                            "Breaks existing package '{0}' conflict: {1} ({2} {3})",
+                            &[&pkg.name, &c.name, &c.oper, &c.ver],
                         ));
                         return true;
                     }
                     if pkg.name != pkgname && provides.iter().any(|p| *p == base_name(&c.name)) {
-                        failure.push_str(&format!(
-                            "Breaks existing package '{}' that conflict: '{}'. \
-                             But the '{}' provides it via: '{}'",
-                            pkg.name,
-                            c.name,
-                            filename.display(),
-                            provides.join(",")
+                        failure.push_str(&tf(
+                            "Breaks existing package '{0}' that conflict: '{1}'. \
+                             But the '{2}' provides it via: '{3}'",
+                            &[
+                                &pkg.name,
+                                &c.name,
+                                &filename.display().to_string(),
+                                &provides.join(","),
+                            ],
                         ));
                         return true;
                     }

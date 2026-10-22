@@ -187,7 +187,7 @@ mod tests {
     /// "./.deb" 特殊文件名,是成员名规范化的关键样本)
     fn test4() -> DebFile {
         let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../../../tests/gdebi-test4.deb");
+            .join("../../tests/gdebi-test4.deb");
         DebFile::open(&path).expect("open gdebi-test4.deb")
     }
 

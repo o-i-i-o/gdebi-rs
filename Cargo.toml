@@ -9,7 +9,8 @@ license = "GPL-3.0-or-later"
 
 [workspace.dependencies]
 gdebi-core = { path = "crates/gdebi-core" }
-thiserror = "2"
+# gettext-system:链接系统 libintl(glibc),走标准 bindtextdomain 流程
+gettext-rs = { version = "0.7", features = ["gettext-system"] }
 ar = "0.9"
 tar = "0.4"
 flate2 = "1"

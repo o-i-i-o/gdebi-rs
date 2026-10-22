@@ -6,7 +6,7 @@ license.workspace = true
 description = "Local .deb parsing and dependency-check core (Rust rewrite of gdebi)"
 
 [dependencies]
-thiserror.workspace = true
 ar.workspace = true
 tar.workspace = true
 flate2.workspace = true
+gettext-rs.workspace = true

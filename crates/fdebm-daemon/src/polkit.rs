@@ -33,7 +33,10 @@ pub async fn check_authorized(
     );
     let details: HashMap<String, String> = HashMap::new();
     // Flags:1 = AllowUserInteraction(密码框可弹出)
-    let (authorized, _): (bool, HashMap<String, String>) = authority
+    // 返回契约为 (is_authorized, is_challenge, details) 三元组 —— 曾按
+    // (bool, a{ss}) 二元组反序列化,真实系统上每次 CheckAuthorization 都
+    // 以 Signature mismatch 失败,安装事务从未走到下载/dpkg
+    let (authorized, _challenge, _details): (bool, bool, HashMap<String, String>) = authority
         .call(
             "CheckAuthorization",
             &(subject, action, details, 1u32, String::new()),

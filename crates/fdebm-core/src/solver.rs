@@ -123,6 +123,14 @@ impl<'a> Encoding<'a> {
         }
     }
 
+    /// 单元 → 统一编号(SAT 模型下标空间:Installed 0..n,随后 Candidate)
+    fn unit_idx(&self, u: Unit) -> usize {
+        match u {
+            Unit::Installed(i) => i,
+            Unit::Candidate(c) => self.n_installed + c,
+        }
+    }
+
     fn plit(&self, idx: usize) -> Lit {
         Lit::from_dimacs((idx + 1) as isize)
     }
@@ -216,6 +224,46 @@ impl<'a> Encoding<'a> {
                     && (r.ver.is_empty() || ver_matches(&vpkg.version, &r.oper, &r.ver))
             })
         })
+    }
+
+    /// 单个依赖组的子句:¬idx ∨ 各备选的满足者(与全量编码同构)
+    fn dep_group_clause(
+        &self,
+        idx: usize,
+        group: &[Dep],
+        solver: &mut Solver,
+        lits: &mut Vec<Lit>,
+        sats: &mut Vec<Unit>,
+    ) {
+        lits.clear();
+        lits.push(self.nlit(idx));
+        for d in group {
+            sats.clear();
+            self.satisfiers_into(d, sats);
+            lits.extend(sats.iter().map(|&s| self.plit_of(s)));
+        }
+        add_clause(solver, lits);
+    }
+
+    /// 单元的全部依赖子句(含 Pre-Depends)
+    fn add_dep_clauses(
+        &self,
+        idx: usize,
+        solver: &mut Solver,
+        lits: &mut Vec<Lit>,
+        sats: &mut Vec<Unit>,
+    ) {
+        let meta = self.meta(self.unit(idx));
+        for group in meta.depends.iter().chain(meta.pre_depends.iter()) {
+            self.dep_group_clause(idx, group, solver, lits, sats);
+        }
+    }
+
+    /// 组是否已在模型内被满足(存在满足者为真)
+    fn group_satisfied_in_model(&self, group: &[Dep], model: &HashSet<usize>) -> bool {
+        group
+            .iter()
+            .any(|d| self.satisfiers(d).iter().any(|&s| model.contains(&self.unit_idx(s))))
     }
 }
 
@@ -325,12 +373,6 @@ fn local_candidate(deb: &DebFile, native_arch: &str) -> crate::sysstate::Candida
 /// 原公式模型:每个必需单元的每个依赖组都有必要集内的满足者;
 /// AMO/冲突子句对真值子集封闭(子集不引入新的同为真对)。
 fn extract_needed(enc: &Encoding<'_>, model: &HashSet<usize>) -> HashSet<usize> {
-    fn unit_idx(enc: &Encoding<'_>, u: Unit) -> usize {
-        match u {
-            Unit::Installed(i) => i,
-            Unit::Candidate(c) => enc.n_installed + c,
-        }
-    }
     // 已装保持集:模型真值中的已装单元全部保留(不参与可达性裁剪)
     let mut needed: HashSet<usize> = (0..enc.n_installed)
         .filter(|i| model.contains(i))
@@ -346,7 +388,7 @@ fn extract_needed(enc: &Encoding<'_>, model: &HashSet<usize>) -> HashSet<usize> 
             if group.iter().any(|d| {
                 enc.satisfiers(d)
                     .iter()
-                    .any(|&s| needed.contains(&unit_idx(enc, s)))
+                    .any(|&s| needed.contains(&enc.unit_idx(s)))
             }) {
                 continue;
             }
@@ -355,7 +397,7 @@ fn extract_needed(enc: &Encoding<'_>, model: &HashSet<usize>) -> HashSet<usize> 
                 let chosen = enc
                     .satisfiers(d)
                     .into_iter()
-                    .map(|s| unit_idx(enc, s))
+                    .map(|s| enc.unit_idx(s))
                     .find(|&s_idx| model.contains(&s_idx));
                 if let Some(s_idx) = chosen {
                     if needed.insert(s_idx) {
@@ -367,6 +409,55 @@ fn extract_needed(enc: &Encoding<'_>, model: &HashSet<usize>) -> HashSet<usize> 
         }
     }
     needed
+}
+
+/// 假设求解 + 模型验证(依赖子句惰性编码的收敛循环)。
+///
+/// 子句库只含已装单元与本地 deb 的全部依赖子句;仓库候选的依赖子句按需
+/// 补加:每轮检查"模型真值单元的每个依赖组在模型内是否有满足者",违反者
+/// 补加其子句后重解(varisat 增量接口,已学子句保留)。
+/// - 返回 None:当前子句库在假设下 UNSAT —— 子句库 ⊆ 全公式,子句集越小
+///   可满足性越宽松,故全公式必 UNSAT,结论可直接采信;
+/// - 返回 Some:验证通过时模型满足全公式(假值单元的依赖子句被 ¬u 平凡
+///   满足),必要集已就地提取。
+///
+/// 验证按单元编号升序扫描,同一输入的补加次序确定,结果可复现。
+fn solve_verified(
+    solver: &mut Solver,
+    enc: &Encoding<'_>,
+    forced: &[Lit],
+    lits: &mut Vec<Lit>,
+    sats: &mut Vec<Unit>,
+) -> Option<HashSet<usize>> {
+    loop {
+        solver.assume(forced);
+        if !solver.solve().unwrap_or(false) {
+            return None;
+        }
+        let model: HashSet<usize> = solver
+            .model()
+            .unwrap_or_default()
+            .iter()
+            .filter(|l| l.is_positive())
+            .map(|l| l.index())
+            .collect();
+        let mut true_units: Vec<usize> = model.iter().copied().collect();
+        true_units.sort_unstable();
+        let mut added = false;
+        for idx in true_units {
+            let meta = enc.meta(enc.unit(idx));
+            for group in meta.depends.iter().chain(meta.pre_depends.iter()) {
+                if enc.group_satisfied_in_model(group, &model) {
+                    continue;
+                }
+                enc.dep_group_clause(idx, group, solver, lits, sats);
+                added = true;
+            }
+        }
+        if !added {
+            return Some(extract_needed(enc, &model));
+        }
+    }
 }
 
 fn encode_and_solve(sys: &SysState, local: crate::sysstate::Candidate) -> Verdict {
@@ -407,21 +498,15 @@ fn encode_and_solve(sys: &SysState, local: crate::sysstate::Candidate) -> Verdic
         }
     }
 
-    // 依赖子句(含 Pre-Depends,配置顺序由 dpkg 保证)
-    for idx in 0..n_units {
-        let u = enc.unit(idx);
-        let meta = enc.meta(u);
-        for group in meta.depends.iter().chain(meta.pre_depends.iter()) {
-            lits.clear();
-            lits.push(enc.nlit(idx));
-            for d in group {
-                sats.clear();
-                enc.satisfiers_into(d, &mut sats);
-                lits.extend(sats.iter().map(|&s| enc.plit_of(s)));
-            }
-            add_clause(&mut solver, &mut lits);
-        }
+    // 依赖子句(含 Pre-Depends,配置顺序由 dpkg 保证)。
+    // 惰性编码(CEGAR):仅已装单元与本地 deb 全量编码 —— keep-all 假设下
+    // 已装恒真、本地必选,子句必然起作用;仓库候选(数万单元)的依赖子句
+    // 只有该候选为真时才影响可满足性,交由 solve_verified 按模型验证补加
+    // (真实索引规模下全量编码曾占 resolve 耗时的七成)
+    for idx in 0..enc.n_installed {
+        enc.add_dep_clauses(idx, &mut solver, &mut lits, &mut sats);
     }
+    enc.add_dep_clauses(local_idx, &mut solver, &mut lits, &mut sats);
 
     // Conflicts(按名字索引取 victim,避免全单元平方级扫描)与 Breaks(仅已安装)
     for idx in 0..n_units {
@@ -466,46 +551,35 @@ fn encode_and_solve(sys: &SysState, local: crate::sysstate::Candidate) -> Verdic
         }
     }
 
-    let extract = |solver: &Solver| -> HashSet<usize> {
-        let model: HashSet<usize> = solver
-            .model()
-            .unwrap_or_default()
-            .iter()
-            .filter(|l| l.is_positive())
-            .map(|l| l.index())
-            .collect();
-        extract_needed(&enc, &model)
-    };
-
     // 快路径(apt 语义):已装包默认全部保持安装,卸载仅在冲突/换版强制时发生。
     // 真实系统上已装数千包,若从默认假值模型出发逐包精化会产生数千次求解。
     let keeps: Vec<Lit> = (0..enc.n_installed).map(|i| enc.plit(i)).collect();
-    solver.assume(&keeps);
     let mut forced: Vec<Lit> = Vec::new();
     let mut selected;
-    if solver.solve().unwrap_or(false) {
-        selected = extract(&solver);
+    if let Some(sel) = solve_verified(&mut solver, &enc, &keeps, &mut lits, &mut sats) {
+        selected = sel;
     } else {
         // 存在必须卸载/换版的包:退回无保留假设,再逐包尝试保持(最小化卸载)
-        solver.assume(&forced);
-        if !solver.solve().unwrap_or(false) {
-            return Verdict::Uninstallable(gettext(
-                "Failed to satisfy all dependencies (conflicting requests or missing packages)",
-            ));
-        }
-        selected = extract(&solver);
+        let mut sel = match solve_verified(&mut solver, &enc, &forced, &mut lits, &mut sats) {
+            Some(sel) => sel,
+            None => {
+                return Verdict::Uninstallable(gettext(
+                    "Failed to satisfy all dependencies (conflicting requests or missing packages)",
+                ));
+            }
+        };
         for i in 0..enc.n_installed {
-            if selected.contains(&i) {
+            if sel.contains(&i) {
                 continue;
             }
             let mut assumps = forced.clone();
             assumps.push(enc.plit(i));
-            solver.assume(&assumps);
-            if solver.solve().unwrap_or(false) {
+            if let Some(s) = solve_verified(&mut solver, &enc, &assumps, &mut lits, &mut sats) {
                 forced = assumps;
-                selected = extract(&solver);
+                sel = s;
             }
         }
+        selected = sel;
     }
 
     // 精化:优先最新版本 —— 仅对"新装入"的键尝试强制最新非本地候选。
@@ -545,10 +619,9 @@ fn encode_and_solve(sys: &SysState, local: crate::sysstate::Candidate) -> Verdic
         }
         let mut assumps = forced.clone();
         assumps.push(enc.plit(newest_idx));
-        solver.assume(&assumps);
-        if solver.solve().unwrap_or(false) {
+        if let Some(sel) = solve_verified(&mut solver, &enc, &assumps, &mut lits, &mut sats) {
             forced = assumps;
-            selected = extract(&solver);
+            selected = sel;
         }
     }
 

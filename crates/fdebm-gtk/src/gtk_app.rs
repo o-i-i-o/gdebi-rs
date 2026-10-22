@@ -193,7 +193,6 @@ struct MainWindow {
     window: gtk::ApplicationWindow,
     label_name: gtk::Label,
     label_status: gtk::Label,
-    button_details: gtk::Button,
     button_install: gtk::Button,
     button_remove: gtk::Button,
     textview_description: gtk::TextView,
@@ -275,9 +274,6 @@ fn build_window(window: &gtk::ApplicationWindow, apt_opts: Vec<String>) -> Rc<Ma
     label_status.set_valign(gtk::Align::Start);
     label_status.set_wrap(true);
     label_status.set_use_markup(true);
-    let button_details = gtk::Button::with_mnemonic(&gettext("_Details"));
-    //加载 deb 后按 verdict 再决定显隐
-    button_details.hide();
 
     let grid = gtk::Grid::builder()
         .column_spacing(12)
@@ -293,14 +289,7 @@ fn build_window(window: &gtk::ApplicationWindow, apt_opts: Vec<String>) -> Rc<Ma
         grid.attach(&l, 0, row, 1, 1);
     }
     grid.attach(&label_name, 1, 0, 1, 1);
-    // Status 行:label_status + button_details 同一行
-    let status_row = gtk::Box::builder()
-        .orientation(gtk::Orientation::Horizontal)
-        .spacing(8)
-        .build();
-    status_row.append(&label_status);
-    status_row.append(&button_details);
-    grid.attach(&status_row, 1, 1, 1, 1);
+    grid.attach(&label_status, 1, 1, 1, 1);
 
     // 右侧动作按钮列:Install / Remove
     let button_install = gtk::Button::with_mnemonic(&gettext("_Install Package"));
@@ -434,7 +423,6 @@ fn build_window(window: &gtk::ApplicationWindow, apt_opts: Vec<String>) -> Rc<Ma
         window: window.clone(),
         label_name,
         label_status,
-        button_details,
         button_install,
         button_remove,
         textview_description,
@@ -454,7 +442,7 @@ fn build_window(window: &gtk::ApplicationWindow, apt_opts: Vec<String>) -> Rc<Ma
         analysis_gen: Cell::new(0),
     });
 
-    // Install / Remove / Details 接线
+    // Install / Remove 接线
     let gui_btn = gui.clone();
     gui.button_install.connect_clicked(move |_| {
         on_install_clicked(&gui_btn);
@@ -462,12 +450,6 @@ fn build_window(window: &gtk::ApplicationWindow, apt_opts: Vec<String>) -> Rc<Ma
     let gui_rm = gui.clone();
     gui.button_remove.connect_clicked(move |_| {
         on_remove_clicked(&gui_rm);
-    });
-    let gui_det = gui.clone();
-    gui.button_details.connect_clicked(move |_| {
-        if let Some(changes) = gui_det.changes.borrow().as_ref() {
-            show_details(&gui_det.window, &changes.install, &changes.remove);
-        }
     });
     // Included files:选中成员 → 右侧内容视图
     let gui_sel = gui.clone();
@@ -773,7 +755,6 @@ fn load_deb(gui: &Rc<MainWindow>, file: &Path) {
     // 依赖结论取自守护进程:先复位按钮,呈现检查中状态
     gui.button_install.set_sensitive(false);
     gui.button_remove.hide();
-    gui.button_details.hide();
     gui.label_status
         .set_text(&gettext("Checking dependencies..."));
     gui.statusbar.pop(gui.status_ctx);
@@ -812,13 +793,12 @@ fn apply_verdict(gui: &Rc<MainWindow>, version: &str, analysis: Result<Analysis,
     };
 
     if !analysis.installable {
-        // 旧版 check 失败分支:红色错误 + install 禁用 + details 隐藏
+        // 旧版 check 失败分支:红色错误 + install 禁用
         gui.label_status.set_markup(&tf(
             "<span foreground=\"red\" weight=\"bold\">Error: {0}</span>",
             &[&glib::markup_escape_text(&analysis.failure)],
         ));
         gui.button_install.set_sensitive(false);
-        gui.button_details.hide();
         gui.button_remove.hide();
         return;
     }
@@ -860,17 +840,14 @@ fn apply_verdict(gui: &Rc<MainWindow>, version: &str, analysis: Result<Analysis,
         gui.button_install.set_label(&gettext("_Reinstall Package"));
         gui.button_remove.set_visible(true);
         gui.button_remove.set_sensitive(true);
-        gui.button_details.hide();
     } else {
         gui.button_install.set_label(&gettext("_Install Package"));
         gui.button_remove.hide();
         if !rm.is_empty() || !inst.is_empty() {
             gui.label_status.set_markup(&deps);
-            gui.button_details.show();
         } else {
             gui.label_status
                 .set_text(&gettext("All dependencies are satisfied"));
-            gui.button_details.hide();
         }
     }
     gui.button_install.set_sensitive(true);
@@ -1029,12 +1006,14 @@ fn run_txn_dialog(
                     .await
                     .map_err(|e| e.to_string())?,
             };
-            Ok::<_, String>((sigs, id))
+            Ok::<_, String>((conn, proxy, sigs, id))
         }
         .await;
 
-        let (mut sigs, id) = match started {
-            Ok((s, id)) => (s, id),
+        // conn/proxy 以 "_" 绑定保活:信号按唯一名投递,事务期间连接
+        // 断开会让 daemon 侧 polkit 解析调用者失败(NameHasNoOwner)
+        let (_conn, _proxy, mut sigs, id) = match started {
+            Ok((c, p, s, id)) => (c, p, s, id),
             Err(e) => {
                 if let Some(id) = pulse_id.take() {
                     id.remove();
@@ -1045,7 +1024,7 @@ fn run_txn_dialog(
                 }
                 window.set_sensitive(true);
                 statusbar.push(ctx, &failed);
-                show_alert(&window, AlertKind::Error, &gettext("gdebi error"), Some(&e));
+                show_alert(&window, AlertKind::Error, &gettext("fdebm error"), Some(&e));
                 return;
             }
         };
@@ -1110,7 +1089,7 @@ fn run_txn_dialog(
                             show_alert(
                                 &window,
                                 AlertKind::Error,
-                                &gettext("gdebi error"),
+                                &gettext("fdebm error"),
                                 Some(&detail),
                             );
                         }
@@ -1200,27 +1179,4 @@ fn on_remove_clicked(gui: &Rc<MainWindow>) {
         gettext("Failed to remove package").to_string(),
         TxnRequest::Remove { name: pkgname },
     );
-}
-
-fn show_details<W: IsA<gtk::Window>>(parent: &W, install: &[String], remove: &[String]) {
-    let mut list = String::new();
-    for r in remove {
-        list.push_str(&tf("<b>To be removed: {0}</b>", &[r]));
-        list.push('\n');
-    }
-    for i in install {
-        list.push_str(&tf("To be installed: {0}", &[i]));
-        list.push('\n');
-    }
-    let dlg = MessageDialog::builder()
-        .transient_for(parent)
-        .modal(true)
-        .message_type(MessageType::Info)
-        .buttons(ButtonsType::Close)
-        .text(gettext("Changes").as_str())
-        .build();
-    dlg.set_secondary_text(Some(&list));
-    dlg.set_secondary_use_markup(true);
-    dlg.connect_response(|d, _| d.destroy());
-    dlg.present();
 }

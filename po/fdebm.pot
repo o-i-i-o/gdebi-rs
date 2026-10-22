@@ -322,7 +322,7 @@ msgstr ""
 
 #: ../crates/fdebm-gtk/src/gtk_app.rs:1057
 #: ../crates/fdebm-gtk/src/gtk_app.rs:1122
-msgid "gdebi error"
+msgid "fdebm error"
 msgstr ""
 
 #: ../crates/fdebm-gtk/src/gtk_app.rs:1165

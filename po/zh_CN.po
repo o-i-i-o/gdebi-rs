@@ -350,10 +350,8 @@ msgid "Automatically close after the changes have been successfully applied"
 msgstr "在成功应用更改后自动关闭"
 
 #: ../crates/gdebi-gtk/src/gtk_app.rs:1007
-#, fuzzy
-#| msgid "gdebi"
-msgid "gdebi error"
-msgstr "gdebi"
+msgid "fdebm error"
+msgstr "fdebm 错误"
 
 #: ../crates/gdebi-gtk/src/gtk_app.rs:1035
 msgid "Install unauthenticated software?"

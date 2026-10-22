@@ -152,6 +152,14 @@ fn finalize(conn: &zbus::Connection, txn: &Txn, state: &str, detail: &str, id: u
 // 事务启动(D-Bus 方法调用入口)
 // ---------------------------------------------------------------------------
 
+/// 一次安装事务的请求参数(收拢为结构体,避免 run_install 参数过长)
+struct InstallRequest {
+    path: String,
+    apt_opts: Vec<String>,
+    conf_policy: ConfPolicy,
+    caller: String,
+}
+
 pub fn start_install(
     manager: &Arc<Manager>,
     conn: &zbus::Connection,
@@ -164,10 +172,16 @@ pub fn start_install(
     let id = manager.alloc(cancel.clone());
     let m = manager.clone();
     let conn = conn.clone();
+    let req = InstallRequest {
+        path,
+        apt_opts,
+        conf_policy: ConfPolicy::from_arg(&conf_policy),
+        caller,
+    };
     std::thread::spawn(move || {
         let txn = m.inner.txns.lock().unwrap().get(&id).cloned();
         let Some(txn) = txn else { return };
-        run_install(&m, &conn, &txn, id, &path, &apt_opts, &conf_policy, &caller);
+        run_install(&m, &conn, &txn, id, &req);
     });
     id
 }
@@ -247,10 +261,14 @@ fn run_install(
     conn: &zbus::Connection,
     txn: &Arc<Txn>,
     id: u32,
-    path: &str,
-    apt_opts: &[String],
-    caller: &str,
+    req: &InstallRequest,
 ) {
+    let InstallRequest {
+        path,
+        apt_opts,
+        conf_policy,
+        caller,
+    } = req;
     // 1. 解析 + 求解
     let deb = match DebFile::open(path) {
         Ok(d) => d,
@@ -299,6 +317,12 @@ fn run_install(
         }
     }
 
+    // 授权后响应取消(用户在认证窗口等待期间已点关闭)
+    if txn.cancel.is_cancelled() {
+        finalize(conn, txn, CANCELLED, "operation cancelled", id, false);
+        return;
+    }
+
     // 3. 下载依赖(求解器给出坐标;无依赖则跳过)
     if !resolution.downloads.is_empty() {
         *txn.state.lock().unwrap() = (DOWNLOADING.to_string(), String::new());
@@ -328,6 +352,7 @@ fn run_install(
             .map(|d| d.dest.clone())
             .collect(),
         remove: resolution.changes.remove.clone(),
+        conf_policy: *conf_policy,
     };
     let ui = TxnUi {
         id,

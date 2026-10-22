@@ -1,5 +1,4 @@
 //! gettext 国际化封装(Linux 标准 gettext 流程,域为 `fdebm`;
-//! msgid 沿用旧版 gdebi 文案,直接复用仓库 po/ 下既有翻译)。
 //!
 //! - 运行期:二进制启动早期调用 [`init`](完成 setlocale / bindtextdomain /
 //!   textdomain);目录优先级 环境变量 `FDEBM_LOCALEDIR` > 编译期 `LOCALEDIR`

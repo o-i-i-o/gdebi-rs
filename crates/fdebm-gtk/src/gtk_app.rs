@@ -1,21 +1,16 @@
 //! GTK4 前端(gtk4 为硬依赖)—— 瘦客户端。
-//! 布局对齐旧版 gdebi-gtk 的 data/gdebi.ui(window_main / dialog_deb_install):
-//! 菜单栏(File/Help)+ 左侧信息表(Package/Status)+
+//! 布局：菜单栏(File/Help)+ 左侧信息表(Package/Status)+
 //! 右侧动作按钮列 + Notebook(Description/Details)+ 底部缓存进度条与状态栏 +
 //! 安装/移除进度对话框(Terminal expander + autoclose)。
-//! 文案沿用旧版原文并经 gettext 国际化(域 fdebm,复用旧版 po,见 core::i18n)。
+//! 文案经 gettext 国际化。
 //!
-//! 与旧版架构的差异(crates/readme.md 路线二):本前端永不 root、不做
-//! 依赖求解、不执行 dpkg —— 三者全部委托特权守护进程 org.fdebm
+//! 本前端永不 root、不做依赖求解、不执行 dpkg —— 三者全部委托特权守护进程 org.fdebm
 //! (zbus 纯 Rust 客户端):
 //! - 分析(AnalyzeLocalFile):本地解析 deb 展示元数据/文件树/lintian,
 //!   依赖结论异步取自守护进程(带代际号丢弃过期结果)
 //! - 安装/移除(InstallLocalFile/RemovePackage):返回事务 id,界面订阅
 //!   OutputLine/ProgressChanged/Finished 信号驱动进度对话框
 //! - 提权:Polkit 由守护进程侧发起,客户端不再 pkexec 重启自身
-//!   (旧版 gksu/pkexec --non-interactive 重启契约随之移除)
-//!
-//! 未还原部分(不留占位):button_download(远程 deb 下载)。
 
 use std::cell::{Cell, RefCell};
 use std::path::{Path, PathBuf};
@@ -190,7 +185,7 @@ async fn analyze_via_daemon(opts: &[String], file: &Path) -> Result<Analysis, St
 }
 
 // ---------------------------------------------------------------------------
-// 主窗口(布局对齐 data/gdebi.ui 的 window_main)
+// 主窗口
 // ---------------------------------------------------------------------------
 
 /// window_main 的控件集合(Rc 共享给菜单动作)
@@ -256,7 +251,7 @@ fn activate(app: &Application, action: LaunchAction) {
         .title(gettext("Package Installer").as_str())
         .default_width(550)
         .default_height(400)
-        // 旧版 gdebi.ui 顶部有 menubar1;GTK4 默认不渲染 app menubar
+        //GTK4 默认不渲染 app menubar
         .show_menubar(true)
         .build();
 
@@ -270,7 +265,7 @@ fn activate(app: &Application, action: LaunchAction) {
 }
 
 fn build_window(window: &gtk::ApplicationWindow, apt_opts: Vec<String>) -> Rc<MainWindow> {
-    // 左侧信息表(旧版 table1):Package / Status
+    // 左侧信息表:Package / Status
     let label_name = gtk::Label::default();
     label_name.set_markup("<b><big>   </big></b>");
     label_name.set_halign(gtk::Align::Start);
@@ -281,7 +276,7 @@ fn build_window(window: &gtk::ApplicationWindow, apt_opts: Vec<String>) -> Rc<Ma
     label_status.set_wrap(true);
     label_status.set_use_markup(true);
     let button_details = gtk::Button::with_mnemonic(&gettext("_Details"));
-    // 旧版 __init__ 初始隐藏,加载 deb 后按 verdict 再决定显隐
+    //加载 deb 后按 verdict 再决定显隐
     button_details.hide();
 
     let grid = gtk::Grid::builder()
@@ -298,7 +293,7 @@ fn build_window(window: &gtk::ApplicationWindow, apt_opts: Vec<String>) -> Rc<Ma
         grid.attach(&l, 0, row, 1, 1);
     }
     grid.attach(&label_name, 1, 0, 1, 1);
-    // Status 行:label_status + button_details 同一行(旧版 hbox2)
+    // Status 行:label_status + button_details 同一行
     let status_row = gtk::Box::builder()
         .orientation(gtk::Orientation::Horizontal)
         .spacing(8)
@@ -307,8 +302,7 @@ fn build_window(window: &gtk::ApplicationWindow, apt_opts: Vec<String>) -> Rc<Ma
     status_row.append(&button_details);
     grid.attach(&status_row, 1, 1, 1, 1);
 
-    // 右侧动作按钮列(旧版 vbox5):Install / Remove
-    // (button_download 待远程 deb 下载接入)
+    // 右侧动作按钮列:Install / Remove
     let button_install = gtk::Button::with_mnemonic(&gettext("_Install Package"));
     let button_remove = gtk::Button::with_mnemonic(&gettext("_Remove Package"));
     for b in [&button_install, &button_remove] {
@@ -332,7 +326,7 @@ fn build_window(window: &gtk::ApplicationWindow, apt_opts: Vec<String>) -> Rc<Ma
     hbox_main.append(&grid);
     hbox_main.append(&btn_col);
 
-    // Notebook(旧版 notebook_details):Description 全文 + Details 五项
+    // Notebook:Description 全文 + Details 五项
     let textview_description = gtk::TextView::builder()
         .editable(false)
         .cursor_visible(false)
@@ -375,7 +369,7 @@ fn build_window(window: &gtk::ApplicationWindow, apt_opts: Vec<String>) -> Rc<Ma
     notebook.append_page(&scroll(&textview_description), Some(&tab_desc));
     notebook.append_page(&details_grid, Some(&tab_details));
 
-    // Included files(旧版 tab3/hpaned2):左文件树,右内容文本(等宽)
+    // Included files:左文件树,右内容文本(等宽)
     let tree_files = gtk::TreeView::new();
     tree_files.set_headers_visible(false);
     let cell = gtk::CellRendererText::new();
@@ -400,7 +394,7 @@ fn build_window(window: &gtk::ApplicationWindow, apt_opts: Vec<String>) -> Rc<Ma
     let tab_files = gtk::Label::new(Some(gettext("Included files").as_str()));
     notebook.append_page(&files_paned, Some(&tab_files));
 
-    // Lintian output(旧版 tab4):等宽文本,后台线程填充
+    // Lintian output:等宽文本,后台线程填充
     let lintian_output = gtk::TextView::builder()
         .editable(false)
         .cursor_visible(false)
@@ -410,7 +404,7 @@ fn build_window(window: &gtk::ApplicationWindow, apt_opts: Vec<String>) -> Rc<Ma
     let tab_lintian = gtk::Label::new(Some(gettext("Lintian output").as_str()));
     notebook.append_page(&scroll(&lintian_output), Some(&tab_lintian));
 
-    // 底部(旧版 hbox3):progressbar_cache + statusbar_main
+    // 底部:progressbar_cache + statusbar_main
     let progressbar_cache = gtk::ProgressBar::new();
     progressbar_cache.set_hexpand(true);
     progressbar_cache.set_pulse_step(0.05);
@@ -475,7 +469,7 @@ fn build_window(window: &gtk::ApplicationWindow, apt_opts: Vec<String>) -> Rc<Ma
             show_details(&gui_det.window, &changes.install, &changes.remove);
         }
     });
-    // Included files:选中成员 → 右侧内容视图(旧版 on_treeview_files_cursor_changed)
+    // Included files:选中成员 → 右侧内容视图
     let gui_sel = gui.clone();
     gui.tree_files
         .selection()
@@ -538,11 +532,11 @@ fn on_file_selected(gui: &MainWindow, sel: &gtk::TreeSelection) {
     gui.file_content.buffer().set_text(&text);
 }
 
-/// Included files 页签填充(旧版 set_deb 的文件树部分)
+/// Included files 页签填充
 fn fill_files(gui: &MainWindow, deb: &DebFile) {
     let store = gtk::TreeStore::new(&[glib::Type::STRING]);
     let res = (|| -> Result<(), FdebmError> {
-        // 组 0:Package control data;组 1:Upstream data(旧版原文)
+        // 组 0:Package control data;组 1:Upstream data
         let control_header = store.append(None);
         store.set(&control_header, &[(0, &gettext("Package control data"))]);
         for n in deb.control_filelist()? {
@@ -558,7 +552,6 @@ fn fill_files(gui: &MainWindow, deb: &DebFile) {
         Ok(())
     })();
     if let Err(e) = res {
-        // 旧版:异常详情进日志,树内仅显示固定提示
         eprintln!("Exception while reading the filelist: '{e}'");
         store.clear();
         let iter = store.append(None);
@@ -620,7 +613,7 @@ fn run_lintian(gui: &MainWindow, file: &Path) {
         let _ = tx.send_blocking(LintianEvent::Finished(code));
     });
 
-    // 回填:文件已切换则丢弃过期输出(旧版无此防护,但多次 Open 会串页)
+    // 回填:文件已切换则丢弃过期输出
     let watch = gui.current_file.clone();
     let watched = file.to_path_buf();
     let view = gui.lintian_output.clone();
@@ -656,7 +649,7 @@ fn run_lintian(gui: &MainWindow, file: &Path) {
 }
 
 fn setup_actions(app: &Application, gui: &Rc<MainWindow>) {
-    // 菜单栏(旧版 menubar1:File: Open…/Refresh/Quit;Help: About)
+    // 菜单栏:File: Open…/Refresh/Quit;Help: About
     let file_menu = gio::Menu::new();
     file_menu.append(Some(gettext("_Open…").as_str()), Some("app.open"));
     file_menu.append(Some(gettext("_Refresh").as_str()), Some("app.refresh"));
@@ -718,7 +711,7 @@ fn setup_actions(app: &Application, gui: &Rc<MainWindow>) {
     });
     app.add_action(&about);
 
-    // 快捷键(Ctrl+O / Ctrl+Q),对齐旧版 accelgroup
+    // 快捷键(Ctrl+O / Ctrl+Q)
     app.set_accels_for_action("app.open", &["<Control>O"]);
     app.set_accels_for_action("app.quit", &["<Control>Q"]);
 }
@@ -731,7 +724,7 @@ fn scroll(w: &impl IsA<gtk::Widget>) -> gtk::ScrolledWindow {
         .build()
 }
 
-/// 打开并填充窗口(旧版 set_deb):本地解析元数据/文件树/lintian,
+/// 打开并填充窗口:本地解析元数据/文件树/lintian,
 /// 依赖结论异步取自守护进程(瘦客户端不读 apt 索引)
 fn load_deb(gui: &Rc<MainWindow>, file: &Path) {
     gui.statusbar
@@ -742,7 +735,7 @@ fn load_deb(gui: &Rc<MainWindow>, file: &Path) {
     *gui.changes.borrow_mut() = None;
     *gui.current_file.borrow_mut() = Some(file.to_path_buf());
 
-    // 旧版入口:文件不存在直接提示
+    // ！！！旧版入口:文件不存在直接提示
     if !file.exists() {
         show_alert(
             &gui.window,
@@ -773,7 +766,7 @@ fn load_deb(gui: &Rc<MainWindow>, file: &Path) {
     let info = flow::describe_deb(&deb);
     fill_static(gui, &info, &deb);
 
-    // 文件树与 lintian(旧版 set_deb 顺序:文件树 → lintian → 依赖检查)
+    // 文件树与 lintian(顺序:文件树 → lintian → 依赖检查)
     fill_files(gui, &deb);
     run_lintian(gui, file);
 
@@ -804,8 +797,6 @@ fn apply_verdict(gui: &Rc<MainWindow>, version: &str, analysis: Result<Analysis,
         Ok(a) => a,
         Err(e) => {
             // 守护进程把缓存打开失败与求解错误折叠为 Err;
-            // 旧版分 "Error opening the cache" / "Dependency check failed"
-            // 两文案,协议上无法区分,统一用后者并附详情
             show_alert(
                 &gui.window,
                 AlertKind::Error,

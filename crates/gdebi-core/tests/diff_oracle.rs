@@ -9,7 +9,7 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use gdebi_core::solver::{resolve, Changes, Verdict};
+use gdebi_core::solver::{Changes, Verdict, resolve};
 use gdebi_core::sysstate::SysState;
 use gdebi_core::{DebFile, GdebiError};
 
@@ -82,7 +82,7 @@ fn our_apt_line(deb: &Path) -> (String, String, i32) {
     if !deb.exists() {
         return err(format!("gdebi error, file not found: {}", deb.display()));
     }
-    let mut sys = match SysState::load(&[]) {
+    let sys = match SysState::load(&[]) {
         Ok(s) => s,
         Err(e) => return err(format!("Error opening the cache:\n{e}")),
     };
@@ -96,7 +96,7 @@ fn our_apt_line(deb: &Path) -> (String, String, i32) {
             "Failed to open the software package\nThe package might be corrupted or you are not allowed to open the file. Check the permissions of the file.".to_string(),
         ),
     };
-    match resolve(&mut sys, &parsed) {
+    match resolve(&sys, &parsed) {
         Ok(Verdict::Installable(resolution)) => {
             let stdout = format!(
                 "{}\n{}\n",
@@ -177,7 +177,11 @@ fn changes_lines_consistent() {
     };
     assert_eq!(
         lines(&c),
-        vec!["To be removed: x", "To be installed: a", "To be installed: b"]
+        vec![
+            "To be removed: x",
+            "To be installed: a",
+            "To be installed: b"
+        ]
     );
 }
 

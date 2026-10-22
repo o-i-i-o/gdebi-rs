@@ -32,4 +32,9 @@ pub mod version;
 
 pub use debfile::DebFile;
 pub use error::GdebiError;
+
+/// D-Bus `AnalyzeLocalFile` 返回契约(daemon/gtk 共用,类型别名仅消解
+/// clippy::type_complexity,线型不变):
+/// (可安装, 错误信息, install[], remove[], unauthenticated[], 已安装版本)
+pub type AnalyzeResult = (bool, String, Vec<String>, Vec<String>, Vec<String>, String);
 pub use version::cmp_version;

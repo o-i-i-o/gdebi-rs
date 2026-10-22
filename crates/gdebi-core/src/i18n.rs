@@ -16,8 +16,8 @@
 
 use std::ffi::OsString;
 
+use gettextrs::{LocaleCategory, bindtextdomain, setlocale, textdomain};
 pub use gettextrs::{gettext, ngettext};
-use gettextrs::{bindtextdomain, setlocale, textdomain, LocaleCategory};
 
 /// 消息目录域名(与旧版一致,po/*.po 无需迁移)
 pub const DOMAIN: &str = "gdebi";

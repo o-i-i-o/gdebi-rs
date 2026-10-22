@@ -42,8 +42,7 @@ impl DebFile {
             }
         }
 
-        let control_tar =
-            control_tar.ok_or_else(|| GdebiError::NotADeb(path.to_path_buf()))?;
+        let control_tar = control_tar.ok_or_else(|| GdebiError::NotADeb(path.to_path_buf()))?;
         let control_bytes = extract_control_bytes(&control_tar)?;
         let paragraphs = parse_control(&String::from_utf8_lossy(&control_bytes));
         Ok(Self {
@@ -135,7 +134,10 @@ impl DebFile {
             Ok(Box::new(flate2::read::GzDecoder::new(Cursor::new(
                 &self.control_tar,
             ))))
-        } else if self.control_tar.starts_with(&[0xfd, 0x37, 0x7a, 0x58, 0x5a, 0x00]) {
+        } else if self
+            .control_tar
+            .starts_with(&[0xfd, 0x37, 0x7a, 0x58, 0x5a, 0x00])
+        {
             Err(GdebiError::UnsupportedCompression("xz"))
         } else if self.control_tar.starts_with(&[0x28, 0xb5, 0x2f, 0xfd]) {
             Err(GdebiError::UnsupportedCompression("zstd"))
@@ -186,8 +188,7 @@ mod tests {
     /// 仓库 tests/ 目录下的 gdebi-test4.deb(data.tar 含 "./..deb" 与
     /// "./.deb" 特殊文件名,是成员名规范化的关键样本)
     fn test4() -> DebFile {
-        let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../../tests/gdebi-test4.deb");
+        let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../tests/gdebi-test4.deb");
         DebFile::open(&path).expect("open gdebi-test4.deb")
     }
 

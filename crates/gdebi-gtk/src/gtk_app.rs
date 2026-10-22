@@ -28,8 +28,8 @@ use futures_lite::StreamExt;
 use gtk4 as gtk;
 use gtk4::prelude::*;
 use gtk4::{
-    gio, glib, Application, ApplicationWindow, ButtonsType, FileChooserNative, MessageDialog,
-    MessageType, ResponseType,
+    Application, ApplicationWindow, ButtonsType, FileChooserNative, MessageDialog, MessageType,
+    ResponseType, gio, glib,
 };
 
 use gdebi_core::flow::{self, PackageInfo};
@@ -151,7 +151,7 @@ trait GdebiRs {
         &self,
         path: &str,
         apt_opts: &[&str],
-    ) -> zbus::Result<(bool, String, Vec<String>, Vec<String>, Vec<String>, String)>;
+    ) -> zbus::Result<gdebi_core::AnalyzeResult>;
 
     /// 安装事务(授权/下载/dpkg 在守护进程内执行)→ 事务 id
     fn install_local_file(&self, path: &str, apt_opts: &[&str]) -> zbus::Result<u32>;
@@ -514,11 +514,17 @@ fn on_file_selected(gui: &MainWindow, sel: &gtk::TreeSelection) {
     }
     let content = match group {
         0 => DebFile::open(
-            gui.current_file.borrow().as_deref().unwrap_or(Path::new("")),
+            gui.current_file
+                .borrow()
+                .as_deref()
+                .unwrap_or(Path::new("")),
         )
         .and_then(|deb| deb.control_content(&name)),
         1 => DebFile::open(
-            gui.current_file.borrow().as_deref().unwrap_or(Path::new("")),
+            gui.current_file
+                .borrow()
+                .as_deref()
+                .unwrap_or(Path::new("")),
         )
         .and_then(|deb| deb.data_content(&name)),
         _ => return,
@@ -588,11 +594,10 @@ fn run_lintian(gui: &MainWindow, file: &Path) {
         let mut child = match child {
             Ok(c) => c,
             Err(e) => {
-                let _ = tx
-                    .send_blocking(LintianEvent::Line(tf(
-                        "Failed to run lintian: {0}",
-                        &[&e.to_string()],
-                    )));
+                let _ = tx.send_blocking(LintianEvent::Line(tf(
+                    "Failed to run lintian: {0}",
+                    &[&e.to_string()],
+                )));
                 let _ = tx.send_blocking(LintianEvent::Finished(-1));
                 return;
             }
@@ -635,7 +640,13 @@ fn run_lintian(gui: &MainWindow, file: &Path) {
                     let mut end = buf.end_iter();
                     buf.insert(
                         &mut end,
-                        &format!("\n{}", tf("Lintian finished with exit status {0}", &[&code.to_string()])),
+                        &format!(
+                            "\n{}",
+                            tf(
+                                "Lintian finished with exit status {0}",
+                                &[&code.to_string()]
+                            )
+                        ),
                     );
                     break;
                 }
@@ -723,7 +734,8 @@ fn scroll(w: &impl IsA<gtk::Widget>) -> gtk::ScrolledWindow {
 /// 打开并填充窗口(旧版 set_deb):本地解析元数据/文件树/lintian,
 /// 依赖结论异步取自守护进程(瘦客户端不读 apt 索引)
 fn load_deb(gui: &Rc<MainWindow>, file: &Path) {
-    gui.statusbar.push(gui.status_ctx, gettext("Loading...").as_str());
+    gui.statusbar
+        .push(gui.status_ctx, gettext("Loading...").as_str());
     // 新代际:使在途的旧分析结果失效
     let generation = gui.analysis_gen.get() + 1;
     gui.analysis_gen.set(generation);
@@ -769,7 +781,8 @@ fn load_deb(gui: &Rc<MainWindow>, file: &Path) {
     gui.button_install.set_sensitive(false);
     gui.button_remove.hide();
     gui.button_details.hide();
-    gui.label_status.set_text(&gettext("Checking dependencies..."));
+    gui.label_status
+        .set_text(&gettext("Checking dependencies..."));
     gui.statusbar.pop(gui.status_ctx);
 
     let gui_wait = gui.clone();
@@ -853,8 +866,7 @@ fn apply_verdict(gui: &Rc<MainWindow>, version: &str, analysis: Result<Analysis,
         // 旧版同版本分支:状态文案 + Reinstall + Remove 显示
         gui.label_status
             .set_text(&gettext("Same version is already installed"));
-        gui.button_install
-            .set_label(&gettext("_Reinstall Package"));
+        gui.button_install.set_label(&gettext("_Reinstall Package"));
         gui.button_remove.set_visible(true);
         gui.button_remove.set_sensitive(true);
         gui.button_details.hide();
@@ -884,12 +896,22 @@ fn fill_static(gui: &MainWindow, info: &PackageInfo, deb: &DebFile) {
 
     let set = |l: &gtk::Label, v: Option<String>| l.set_text(&v.unwrap_or_default());
     set(&gui.details_version, Some(info.version.clone()));
-    set(&gui.details_maintainer, deb.field_trimmed("Maintainer").map(String::from));
-    set(&gui.details_priority, deb.field_trimmed("Priority").map(String::from));
-    set(&gui.details_section, deb.field_trimmed("Section").map(String::from));
+    set(
+        &gui.details_maintainer,
+        deb.field_trimmed("Maintainer").map(String::from),
+    );
+    set(
+        &gui.details_priority,
+        deb.field_trimmed("Priority").map(String::from),
+    );
+    set(
+        &gui.details_section,
+        deb.field_trimmed("Section").map(String::from),
+    );
     set(
         &gui.details_size,
-        deb.field_trimmed("Installed-Size").map(|s| format!("{s} KiB")),
+        deb.field_trimmed("Installed-Size")
+            .map(|s| format!("{s} KiB")),
     );
 }
 
@@ -1032,12 +1054,7 @@ fn run_txn_dialog(
                 }
                 window.set_sensitive(true);
                 statusbar.push(ctx, &failed);
-                show_alert(
-                    &window,
-                    AlertKind::Error,
-                    &gettext("gdebi error"),
-                    Some(&e),
-                );
+                show_alert(&window, AlertKind::Error, &gettext("gdebi error"), Some(&e));
                 return;
             }
         };
@@ -1062,8 +1079,7 @@ fn run_txn_dialog(
                     }
                 }
                 "ProgressChanged" => {
-                    if let Ok((sid, percent, desc)) =
-                        msg.body().deserialize::<(u32, f64, String)>()
+                    if let Ok((sid, percent, desc)) = msg.body().deserialize::<(u32, f64, String)>()
                         && sid == id
                     {
                         if percent < 0.0 {
@@ -1158,8 +1174,10 @@ fn on_install_clicked(gui: &Rc<MainWindow>) {
         }
     }
     let file = gui.current_file.borrow().clone().unwrap_or_default();
-    gui.statusbar
-        .push(gui.status_ctx, gettext("Installing package file...").as_str());
+    gui.statusbar.push(
+        gui.status_ctx,
+        gettext("Installing package file...").as_str(),
+    );
     run_txn_dialog(
         gui,
         &gettext("Installing package file..."),
@@ -1193,11 +1211,7 @@ fn on_remove_clicked(gui: &Rc<MainWindow>) {
     );
 }
 
-fn show_details<W: IsA<gtk::Window>>(
-    parent: &W,
-    install: &[String],
-    remove: &[String],
-) {
+fn show_details<W: IsA<gtk::Window>>(parent: &W, install: &[String], remove: &[String]) {
     let mut list = String::new();
     for r in remove {
         list.push_str(&tf("<b>To be removed: {0}</b>", &[r]));

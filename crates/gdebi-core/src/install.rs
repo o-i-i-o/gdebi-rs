@@ -13,9 +13,9 @@
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
+use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
-use std::sync::Mutex;
 
 use crate::error::GdebiError;
 use crate::i18n::gettext;
@@ -92,7 +92,9 @@ pub fn install(
     }
 
     let mut cmd = Command::new("dpkg");
-    cmd.arg("--auto-deconfigure").arg("-i").arg(std::path::absolute(&batch.local)?);
+    cmd.arg("--auto-deconfigure")
+        .arg("-i")
+        .arg(std::path::absolute(&batch.local)?);
     for deb in &batch.dep_debs {
         cmd.arg(deb);
     }

@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    name: build / clippy / fmt / test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - uses: Swatinem/rust-cache@v2
+
+      # GTK4 开发头(gtk4-rs 经 pkg-config 探测)+ gettext 工具链(po 构建/校验)
+      - name: 安装系统依赖
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libgtk-4-dev gettext
+
+      - name: cargo build
+        run: cargo build --workspace
+
+      - name: cargo clippy(-D warnings)
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: cargo fmt --check
+        run: cargo fmt --check
+
+      # 单元/差分测试均不启动 GUI;dpkg-deb 由 runner 预装
+      - name: cargo test
+        run: cargo test --workspace
+
+  package:
+    name: 打包 .deb
+    runs-on: ubuntu-latest
+    needs: check
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: 安装系统依赖
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libgtk-4-dev gettext
+
+      - name: 构建 .deb
+        run: ./scripts/build-deb.sh
+
+      - name: 上传产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: gdebi-rs-deb
+          path: dist/*.deb
+          if-no-files-found: error

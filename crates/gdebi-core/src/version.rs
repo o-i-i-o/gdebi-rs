@@ -20,8 +20,7 @@ fn verrevcmp(mut a: &[u8], mut b: &[u8]) -> Ordering {
     while !a.is_empty() || !b.is_empty() {
         let mut first_diff = 0i32;
 
-        while (!a.is_empty() && !a[0].is_ascii_digit())
-            || (!b.is_empty() && !b[0].is_ascii_digit())
+        while (!a.is_empty() && !a[0].is_ascii_digit()) || (!b.is_empty() && !b[0].is_ascii_digit())
         {
             let d = order(a.first().copied()) - order(b.first().copied());
             if d != 0 {

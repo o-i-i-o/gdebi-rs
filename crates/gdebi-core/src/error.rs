@@ -35,10 +35,14 @@ impl From<io::Error> for GdebiError {
 impl fmt::Display for GdebiError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let msg = match self {
-            Self::OpenFailed(path, reason) => {
-                tf("cannot open {0}: {1}", &[&path.display().to_string(), reason])
-            }
-            Self::NotADeb(path) => tf("{0} is not a Debian package", &[&path.display().to_string()]),
+            Self::OpenFailed(path, reason) => tf(
+                "cannot open {0}: {1}",
+                &[&path.display().to_string(), reason],
+            ),
+            Self::NotADeb(path) => tf(
+                "{0} is not a Debian package",
+                &[&path.display().to_string()],
+            ),
             Self::MissingControl => gettext("control file not found in package"),
             Self::UnsupportedCompression(compression) => tf(
                 "{0} compressed control.tar is not supported yet (only gzip/plain)",
@@ -50,9 +54,10 @@ impl fmt::Display for GdebiError {
             Self::Subprocess(cmd, stderr) => {
                 tf("subprocess {0} failed: {1}", &[cmd, stderr.trim()])
             }
-            Self::ListDecompress(path, reason) => {
-                tf("cannot decompress repository index {0}: {1}", &[path, reason])
-            }
+            Self::ListDecompress(path, reason) => tf(
+                "cannot decompress repository index {0}: {1}",
+                &[path, reason],
+            ),
             Self::Download(url, reason) => tf("cannot download {0}: {1}", &[url, reason]),
             Self::Cancelled => gettext("operation cancelled"),
         };

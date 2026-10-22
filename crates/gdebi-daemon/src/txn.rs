@@ -15,8 +15,8 @@ use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
 
 use gdebi_core::download::{self, DownloadProgress};
-use gdebi_core::install::{self, CancelHandle, InstallBatch};
 use gdebi_core::i18n::tf;
+use gdebi_core::install::{self, CancelHandle, InstallBatch};
 use gdebi_core::solver::{self, Verdict};
 use gdebi_core::sysstate::SysState;
 use gdebi_core::ui::{AlertKind, InstallProgress, Ui};
@@ -100,10 +100,11 @@ impl Manager {
                 .and_then(|m| m.modified())
                 .unwrap_or(SystemTime::UNIX_EPOCH);
             let mut cache = self.sys_cache.lock().unwrap();
-            if let Some((st, li, state)) = cache.as_ref() {
-                if *st == st_mtime && *li == li_mtime {
-                    return Ok(state.clone());
-                }
+            if let Some((st, li, state)) = cache.as_ref()
+                && *st == st_mtime
+                && *li == li_mtime
+            {
+                return Ok(state.clone());
             }
             let state = Arc::new(SysState::load(apt_opts)?);
             *cache = Some((st_mtime, li_mtime, state.clone()));
@@ -193,7 +194,7 @@ pub fn analyze(
     manager: &Arc<Manager>,
     path: &str,
     apt_opts: &[String],
-) -> Result<(bool, String, Vec<String>, Vec<String>, Vec<String>, String), String> {
+) -> Result<gdebi_core::AnalyzeResult, String> {
     let run = || -> Result<_, GdebiError> {
         let deb = DebFile::open(path)?;
         let sys = manager.sys_state(apt_opts)?;
@@ -207,10 +208,7 @@ pub fn analyze(
         } else {
             format!("{}:{}", name, arch)
         };
-        let installed_version = sys
-            .installed_version(&key)
-            .unwrap_or_default()
-            .to_string();
+        let installed_version = sys.installed_version(&key).unwrap_or_default().to_string();
         Ok(match solver::resolve(&sys, &deb)? {
             Verdict::Installable(res) => (
                 true,
@@ -220,9 +218,14 @@ pub fn analyze(
                 res.changes.unauthenticated,
                 installed_version,
             ),
-            Verdict::Uninstallable(failure) => {
-                (false, failure, Vec::new(), Vec::new(), Vec::new(), installed_version)
-            }
+            Verdict::Uninstallable(failure) => (
+                false,
+                failure,
+                Vec::new(),
+                Vec::new(),
+                Vec::new(),
+                installed_version,
+            ),
         })
     };
     run().map_err(|e| e.to_string())

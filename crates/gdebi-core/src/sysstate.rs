@@ -254,7 +254,11 @@ fn status_installed(status: &str) -> bool {
     let mut words = status.split_whitespace();
     matches!(
         (words.next(), words.next(), words.next()),
-        (Some("install") | Some("hold"), Some("ok"), Some("installed"))
+        (
+            Some("install") | Some("hold"),
+            Some("ok"),
+            Some("installed")
+        )
     )
 }
 
@@ -358,8 +362,7 @@ fn decompress_to_string(path: &Path) -> Result<String, GdebiError> {
         out
     } else if name.ends_with(".xz") {
         let mut out = Vec::new();
-        lzma_rs::xz_decompress(&mut &raw[..], &mut out)
-            .map_err(|e| decomp_err(e.to_string()))?;
+        lzma_rs::xz_decompress(&mut &raw[..], &mut out).map_err(|e| decomp_err(e.to_string()))?;
         out
     } else if name.ends_with(".zst") {
         let mut out = Vec::new();

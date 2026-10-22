@@ -39,12 +39,14 @@ impl GdebiIface {
         &self,
         path: String,
         apt_opts: Vec<String>,
-    ) -> zbus::fdo::Result<(bool, String, Vec<String>, Vec<String>, Vec<String>, String)> {
+    ) -> zbus::fdo::Result<gdebi_core::AnalyzeResult> {
         // 求解是重活(索引解析),放独立线程避免阻塞总线 executor
         let manager = self.manager.clone();
         let (tx, rx) = async_channel::bounded(1);
         std::thread::spawn(move || {
-            let _ = tx.send(txn::analyze(&manager, &path, &apt_opts));
+            // send 是 async 方法,同步线程内必须用 send_blocking:
+            // let _ = tx.send(..) 只创建 future 即丢弃,消息永远不会入队
+            let _ = tx.send_blocking(txn::analyze(&manager, &path, &apt_opts));
         });
         rx.recv()
             .await

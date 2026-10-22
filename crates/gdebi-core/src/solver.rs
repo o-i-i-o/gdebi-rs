@@ -21,7 +21,7 @@ use varisat::{ExtendFormula, Lit, Solver};
 use crate::debfile::DebFile;
 use crate::error::GdebiError;
 use crate::i18n::{gettext, tf};
-use crate::sysstate::{base_name, Dep, Pkg, SysState};
+use crate::sysstate::{Dep, Pkg, SysState, base_name};
 use crate::version::cmp_version;
 
 /// 下载坐标(仓库候选被选中时生成;本地 deb 直接走 dpkg -i)
@@ -236,7 +236,10 @@ pub fn resolve(sys: &SysState, deb: &DebFile) -> Result<Verdict, GdebiError> {
     let mut archs = vec![sys.native_arch.clone(), "all".to_string()];
     archs.extend(sys.foreign_arches.iter().cloned());
     if !archs.contains(&arch) {
-        return Ok(Verdict::Uninstallable(tf("Wrong architecture '{0}'", &[&arch])));
+        return Ok(Verdict::Uninstallable(tf(
+            "Wrong architecture '{0}'",
+            &[&arch],
+        )));
     }
 
     // 降级拒绝(与旧版 gdebi 同语义;重装同版本放行)
@@ -245,22 +248,22 @@ pub fn resolve(sys: &SysState, deb: &DebFile) -> Result<Verdict, GdebiError> {
     } else {
         format!("{}:{}", name, arch)
     };
-    if let Some(installed) = sys.installed_version(&key) {
-        if cmp_version(installed, &version) == std::cmp::Ordering::Greater {
-            return Ok(Verdict::Uninstallable(gettext(
-                "A later version is already installed",
-            )));
-        }
+    if let Some(installed) = sys.installed_version(&key)
+        && cmp_version(installed, &version) == std::cmp::Ordering::Greater
+    {
+        return Ok(Verdict::Uninstallable(gettext(
+            "A later version is already installed",
+        )));
     }
 
-    Ok(encode_and_solve(sys, local_candidate(deb, &sys.native_arch)))
+    Ok(encode_and_solve(
+        sys,
+        local_candidate(deb, &sys.native_arch),
+    ))
 }
 
 /// 本地 deb → 候选元数据(键派生与 SysState::load 同规则)
-fn local_candidate(
-    deb: &DebFile,
-    native_arch: &str,
-) -> crate::sysstate::Candidate {
+fn local_candidate(deb: &DebFile, native_arch: &str) -> crate::sysstate::Candidate {
     let pkg = crate::sysstate::pkg_from_fields(|n| deb.field_trimmed(n), native_arch)
         .expect("DebFile::open 已校验 Package 字段");
     crate::sysstate::Candidate {
@@ -298,7 +301,10 @@ fn encode_and_solve(sys: &SysState, local: crate::sysstate::Candidate) -> Verdic
     for group in enc.groups.values() {
         for a in 0..group.len() {
             for b in a + 1..group.len() {
-                add_clause(&mut solver, vec![enc.nlit_of(group[a]), enc.nlit_of(group[b])]);
+                add_clause(
+                    &mut solver,
+                    vec![enc.nlit_of(group[a]), enc.nlit_of(group[b])],
+                );
             }
         }
     }
@@ -383,10 +389,7 @@ fn encode_and_solve(sys: &SysState, local: crate::sysstate::Candidate) -> Verdic
             continue;
         };
         // add_candidates 已按版本降序排列;手工构造状态时按列表顺序
-        let Some(&newest) = cands
-            .iter()
-            .find(|&&c| !sys.all_candidates[c].is_local())
-        else {
+        let Some(&newest) = cands.iter().find(|&&c| !sys.all_candidates[c].is_local()) else {
             continue;
         };
         let newest_idx = newest + enc.n_installed;

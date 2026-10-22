@@ -1,4 +1,4 @@
-//! .deb 文件打开:ar 容器 → control.tar(.gz/无压缩)→ control 内容。
+//! .deb 文件打开:ar 容器 → control.tar(gz/xz/zstd/无压缩)→ control 内容。
 //! control 以原始字节保留(dpkg 语义,允许非 UTF-8 字节,如 gdebi-test6);
 //! 字段解析在 lossy 转换后的文本上进行,仅用于展示。
 //!
@@ -43,7 +43,7 @@ impl DebFile {
         }
 
         let control_tar = control_tar.ok_or_else(|| FdebmError::NotADeb(path.to_path_buf()))?;
-        let control_bytes = extract_control_bytes(&control_tar)?;
+        let control_bytes = extract_control_bytes(decompress_control_tar(&control_tar)?)?;
         let paragraphs = parse_control(&String::from_utf8_lossy(&control_bytes));
         Ok(Self {
             path: path.to_path_buf(),
@@ -75,7 +75,8 @@ impl DebFile {
     /// control.tar 成员名列表(排序;对应旧版 control_filelist)
     pub fn control_filelist(&self) -> Result<Vec<String>, FdebmError> {
         let mut out = Vec::new();
-        for entry in tar::Archive::new(self.control_reader()?).entries()? {
+        let plain = decompress_control_tar(&self.control_tar)?;
+        for entry in tar::Archive::new(Cursor::new(plain)).entries()? {
             let entry = entry?;
             out.push(normalize_member(&entry.path()?.to_string_lossy()));
         }
@@ -100,7 +101,8 @@ impl DebFile {
 
     /// control.tar 内单文件内容(name 为去前缀后的展示名)
     pub fn control_content(&self, name: &str) -> Result<Vec<u8>, FdebmError> {
-        for entry in tar::Archive::new(self.control_reader()?).entries()? {
+        let plain = decompress_control_tar(&self.control_tar)?;
+        for entry in tar::Archive::new(Cursor::new(plain)).entries()? {
             let mut entry = entry?;
             if normalize_member(&entry.path()?.to_string_lossy()) == name {
                 let mut bytes = Vec::new();
@@ -128,23 +130,6 @@ impl DebFile {
         }
         Ok(Vec::new())
     }
-
-    fn control_reader(&self) -> Result<Box<dyn Read + '_>, FdebmError> {
-        if self.control_tar.starts_with(&[0x1f, 0x8b]) {
-            Ok(Box::new(flate2::read::GzDecoder::new(Cursor::new(
-                &self.control_tar,
-            ))))
-        } else if self
-            .control_tar
-            .starts_with(&[0xfd, 0x37, 0x7a, 0x58, 0x5a, 0x00])
-        {
-            Err(FdebmError::UnsupportedCompression("xz"))
-        } else if self.control_tar.starts_with(&[0x28, 0xb5, 0x2f, 0xfd]) {
-            Err(FdebmError::UnsupportedCompression("zstd"))
-        } else {
-            Ok(Box::new(Cursor::new(&self.control_tar)))
-        }
-    }
 }
 
 /// tar 成员名规范化:去 "./" 前缀;根目录项 "./" 保留原样
@@ -157,19 +142,38 @@ fn normalize_member(name: &str) -> String {
     }
 }
 
-/// control.tar 原始字节 → 解压后的 control 文件字节
-fn extract_control_bytes(data: &[u8]) -> Result<Vec<u8>, FdebmError> {
-    let reader: Box<dyn Read> = if data.starts_with(&[0x1f, 0x8b]) {
-        Box::new(flate2::read::GzDecoder::new(Cursor::new(data)))
-    } else if data.starts_with(&[0xfd, 0x37, 0x7a, 0x58, 0x5a, 0x00]) {
-        return Err(FdebmError::UnsupportedCompression("xz"));
-    } else if data.starts_with(&[0x28, 0xb5, 0x2f, 0xfd]) {
-        return Err(FdebmError::UnsupportedCompression("zstd"));
+/// control.tar 原始字节 → 解压后的 tar 字节(魔数判定:gz/xz/zstd,
+/// 其余按无压缩处理;均纯 Rust 后端,与索引解压同一套依赖)
+fn decompress_control_tar(data: &[u8]) -> Result<Vec<u8>, FdebmError> {
+    const GZ: [u8; 2] = [0x1f, 0x8b];
+    const XZ: [u8; 6] = [0xfd, 0x37, 0x7a, 0x58, 0x5a, 0x00];
+    const ZSTD: [u8; 4] = [0x28, 0xb5, 0x2f, 0xfd];
+    if data.starts_with(&GZ) {
+        let mut out = Vec::new();
+        flate2::read::GzDecoder::new(data)
+            .read_to_end(&mut out)
+            .map_err(|e| FdebmError::ControlDecompress(e.to_string()))?;
+        Ok(out)
+    } else if data.starts_with(&XZ) {
+        let mut out = Vec::new();
+        lzma_rs::xz_decompress(&mut Cursor::new(data), &mut out)
+            .map_err(|e| FdebmError::ControlDecompress(e.to_string()))?;
+        Ok(out)
+    } else if data.starts_with(&ZSTD) {
+        let mut out = Vec::new();
+        ruzstd::StreamingDecoder::new(data)
+            .map_err(|e| FdebmError::ControlDecompress(e.to_string()))?
+            .read_to_end(&mut out)
+            .map_err(|e| FdebmError::ControlDecompress(e.to_string()))?;
+        Ok(out)
     } else {
-        Box::new(Cursor::new(data))
-    };
+        Ok(data.to_vec())
+    }
+}
 
-    let mut tar = tar::Archive::new(reader);
+/// 解压后的 control.tar → control 文件字节
+fn extract_control_bytes(plain_tar: Vec<u8>) -> Result<Vec<u8>, FdebmError> {
+    let mut tar = tar::Archive::new(Cursor::new(plain_tar));
     for entry in tar.entries()? {
         let mut entry = entry?;
         if entry.path()?.file_name().and_then(|s| s.to_str()) == Some("control") {
@@ -231,5 +235,25 @@ mod tests {
         let bytes = deb.control_content("control").unwrap();
         assert!(!bytes.is_empty());
         assert!(String::from_utf8_lossy(&bytes).contains("Package: gdebi-test4"));
+    }
+
+    /// 现代 dpkg 默认压缩(xz):control.tar.xz 打开/字段/成员列表
+    #[test]
+    fn opens_xz_compressed_control_tar() {
+        let path =
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../tests/control-xz_1.0_all.deb");
+        let deb = DebFile::open(&path).expect("open control.tar.xz deb");
+        assert_eq!(deb.field_trimmed("Package"), Some("control-xz"));
+        assert_eq!(deb.control_filelist().unwrap(), vec!["./", "control"]);
+    }
+
+    /// zstd 压缩(新版 dpkg 可选):control.tar.zst 打开/字段/成员列表
+    #[test]
+    fn opens_zstd_compressed_control_tar() {
+        let path =
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../tests/control-zst_1.0_all.deb");
+        let deb = DebFile::open(&path).expect("open control.tar.zst deb");
+        assert_eq!(deb.field_trimmed("Package"), Some("control-zst"));
+        assert_eq!(deb.control_filelist().unwrap(), vec!["./", "control"]);
     }
 }

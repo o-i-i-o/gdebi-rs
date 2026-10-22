@@ -43,8 +43,9 @@ pub struct Pkg {
     pub conflicts: Vec<Vec<Dep>>,
     pub breaks: Vec<Vec<Dep>>,
     pub replaces: Vec<Vec<Dep>>,
-    /// Provides 的虚拟名(忽略版本约束,与 python-apt 取首名一致)
-    pub provides: Vec<String>,
+    /// Provides 列表:虚拟名 + 版本(dpkg ≥1.17.11 版本化提供;
+    /// 版本化关系对虚拟名仅命中版本化提供)
+    pub provides: Vec<(String, Option<String>)>,
     pub essential: bool,
 }
 
@@ -413,8 +414,9 @@ pub fn parse_depends(s: &str) -> Vec<Vec<Dep>> {
         .collect()
 }
 
-/// Provides 字段 → 虚拟名列表(忽略版本约束)
-pub fn provided_names(field: &str) -> Vec<String> {
+/// Provides 字段 → (虚拟名, 版本化提供版本) 列表
+/// (仅 "(= ver)" 形式算版本化提供,与 dpkg 语义一致)
+pub fn provided_names(field: &str) -> Vec<(String, Option<String>)> {
     field
         .split(',')
         .filter_map(|e| {
@@ -422,9 +424,22 @@ pub fn provided_names(field: &str) -> Vec<String> {
             if e.is_empty() {
                 return None;
             }
-            let name = e.find('(').map(|i| &e[..i]).unwrap_or(e);
-            let name = name.trim().split(':').next().unwrap_or(name).trim();
-            (!name.is_empty()).then(|| name.to_string())
+            let (name, ver) = match e.find('(') {
+                Some(i) => {
+                    let inner = e[i..]
+                        .trim_start_matches('(')
+                        .trim_end_matches(')')
+                        .trim();
+                    let mut it = inner.splitn(2, char::is_whitespace);
+                    let op = it.next().unwrap_or("").trim();
+                    let v = it.next().unwrap_or("").trim();
+                    let v = (op == "=" && !v.is_empty()).then(|| v.to_string());
+                    (e[..i].trim(), v)
+                }
+                None => (e, None),
+            };
+            let name = name.split(':').next().unwrap_or(name).trim();
+            (!name.is_empty()).then(|| (name.to_string(), ver))
         })
         .collect()
 }
@@ -467,7 +482,7 @@ mod tests {
         assert_eq!(p.version, "5.02-1");
         assert_eq!(p.depends[0][0].name, "libc6");
         assert_eq!(p.conflicts[0][0].name, "sl-alternative");
-        assert_eq!(p.provides, vec!["train".to_string()]);
+        assert_eq!(p.provides, vec![("train".to_string(), None)]);
         assert!(!p.essential);
     }
 

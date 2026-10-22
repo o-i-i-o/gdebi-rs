@@ -8,7 +8,8 @@
 //! - Conflicts/Breaks:互斥子句;Replaces 覆盖时豁免(dpkg 语义)
 //! - Essential 包强制保持安装(比旧版 gdebi 多出的保护)
 //!
-//! 求解策略:CDCL 全解 + 假设式迭代精化(最小化卸载、优先新版本)。
+//! 求解策略:已装包默认全部保持(apt 语义快路径)→ 必要时退回假设式
+//! 迭代精化(最小化卸载、新装键优先新版本)。
 //!
 //! 与旧版 gdebi 的行为差异(有意):失败原因不再逐条比对 python-apt 的
 //! failure_string,统一为"求解失败"类消息;or 组解析交给 SAT 而非首分支回溯。
@@ -90,7 +91,7 @@ impl<'a> Encoding<'a> {
         let mut push = |u: Unit, pkg: &Pkg| {
             by_name.entry(pkg.name.clone()).or_default().push(u);
             for p in &pkg.provides {
-                providers.entry(p.clone()).or_default().push(u);
+                providers.entry(p.0.clone()).or_default().push(u);
             }
             groups.entry(pkg.key.clone()).or_default().push(u);
         };
@@ -143,40 +144,67 @@ impl<'a> Encoding<'a> {
         }
     }
 
-    /// 依赖满足者:直接命中优先,无直接命中才看虚拟提供(与 python-apt 一致)
+    /// 依赖满足者:直接命中与虚拟提供的并集(or 组取舍交给 SAT)。
+    /// 曾用"直连优先、无直连才看提供":仓库存在同名候选时已装提供者
+    /// 被排除出依赖子句,keep-all 模型被迫安装无关候选(如已由
+    /// sysvinit-utils 提供的 lsb-base 仍被要求安装仓库候选)。
+    /// 版本化约束经虚拟提供命中时要求版本化提供(dpkg ≥1.17.11 语义)
     fn satisfiers(&self, d: &Dep) -> Vec<Unit> {
-        let direct: Vec<Unit> = self
-            .by_name
-            .get(base_name(&d.name))
-            .map(|units| {
+        let mut out = Vec::new();
+        self.satisfiers_into(d, &mut out);
+        out
+    }
+
+    /// 同 satisfiers,复用调用方缓冲(依赖子句生成在真实索引规模下
+    /// 调用数十万次,逐次分配是 resolve 的主要开销)
+    fn satisfiers_into(&self, d: &Dep, out: &mut Vec<Unit>) {
+        out.clear();
+        if let Some(units) = self.by_name.get(base_name(&d.name)) {
+            out.extend(units.iter().copied().filter(|&u| {
+                let pkg = self.meta(u);
+                dep_covers(&d.name, pkg, self.sys.native_arch.as_str())
+                    && ver_matches(&pkg.version, &d.oper, &d.ver)
+            }));
+        }
+        if let Some(units) = self.providers.get(base_name(&d.name)) {
+            out.extend(
                 units
                     .iter()
                     .copied()
-                    .filter(|&u| {
-                        let pkg = self.meta(u);
-                        dep_covers(&d.name, pkg) && ver_matches(&pkg.version, &d.oper, &d.ver)
-                    })
-                    .collect()
-            })
-            .unwrap_or_default();
-        if !direct.is_empty() {
-            return direct;
+                    .filter(|&u| self.provide_ver_matches(u, d)),
+            );
         }
-        self.providers
-            .get(base_name(&d.name))
-            .cloned()
-            .unwrap_or_default()
+    }
+
+    /// 提供命中时 u 是否满足 d 的版本约束(无版本约束恒真;
+    /// 有版本约束时必须存在匹配的版本化提供)
+    fn provide_ver_matches(&self, u: Unit, d: &Dep) -> bool {
+        if d.ver.is_empty() || d.oper.is_empty() {
+            return true;
+        }
+        self.meta(u).provides.iter().any(|(n, pv)| {
+            n == base_name(&d.name)
+                && pv.as_ref().is_some_and(|pv| ver_matches(pv, &d.oper, &d.ver))
+        })
     }
 
     /// U 的 Conflicts/Breaks 条目 c 是否命中单元 v
     fn hits(&self, c: &Dep, v: Unit) -> bool {
         let pkg = self.meta(v);
-        let name_hit = dep_covers(&c.name, pkg)
-            || self
-                .providers
-                .get(base_name(&c.name))
-                .is_some_and(|ps| ps.contains(&v));
-        name_hit && (c.ver.is_empty() || ver_matches(&pkg.version, &c.oper, &c.ver))
+        if dep_covers(&c.name, pkg, self.sys.native_arch.as_str()) {
+            c.ver.is_empty() || ver_matches(&pkg.version, &c.oper, &c.ver)
+        } else if self
+            .providers
+            .get(base_name(&c.name))
+            .is_some_and(|ps| ps.contains(&v))
+        {
+            // 提供命中:版本化约束仅适用版本化提供
+            // (否则 dpkg 的版本化 Breaks 会误伤无版本提供者,如
+            //  dpkg Breaks lsb-base (<< x) 对 sysvinit-utils 的无版本提供)
+            self.provide_ver_matches(v, c)
+        } else {
+            false
+        }
     }
 
     /// U 的 Replaces 是否覆盖 v(冲突豁免)
@@ -184,25 +212,35 @@ impl<'a> Encoding<'a> {
         let vpkg = self.meta(v);
         self.meta(u).replaces.iter().any(|g| {
             g.iter().any(|r| {
-                dep_covers(&r.name, vpkg)
+                dep_covers(&r.name, vpkg, self.sys.native_arch.as_str())
                     && (r.ver.is_empty() || ver_matches(&vpkg.version, &r.oper, &r.ver))
             })
         })
     }
 }
 
-/// 添加子句(排序去重,空子句即 UNSAT 由求解器报告)
-fn add_clause(solver: &mut Solver, lits: Vec<Lit>) {
-    let mut lits = lits;
+/// 添加子句(排序去重,空子句即 UNSAT 由求解器报告);复用调用方缓冲
+fn add_clause(solver: &mut Solver, lits: &mut Vec<Lit>) {
     lits.sort();
     lits.dedup();
-    solver.add_clause(&lits);
+    solver.add_clause(lits);
 }
 
-/// 依赖名是否覆盖给定包名(考虑 :arch 限定;无限定时任意架构均匹配)
-fn dep_covers(dep_name: &str, pkg: &Pkg) -> bool {
+/// 依赖名是否覆盖给定包名(考虑 :arch 限定)。
+/// dpkg 语义:无限定匹配任意架构;":any" 匹配任意架构;":native"
+/// 仅本机架构;其余限定精确匹配架构 —— 曾把 ":any" 当字面架构名,
+/// 真实系统上 python3:any/perl:any 类依赖 satisfiers 为空,生成
+/// 强制卸载已装包的单元子句,导致 keep-all 快路径 UNSAT
+fn dep_covers(dep_name: &str, pkg: &Pkg, native_arch: &str) -> bool {
     match dep_name.split_once(':') {
-        Some((base, arch)) => pkg.name == base && pkg.arch == arch,
+        Some((base, arch)) => {
+            pkg.name == base
+                && match arch {
+                    "any" => true,
+                    "native" => pkg.arch == native_arch,
+                    a => pkg.arch == a,
+                }
+        }
         None => pkg.name == dep_name,
     }
 }
@@ -276,6 +314,61 @@ fn local_candidate(deb: &DebFile, native_arch: &str) -> crate::sysstate::Candida
     }
 }
 
+/// SAT 模型 → 必要选中集(贪心闭包提取)。
+///
+/// 求解器返回的是全变量赋值模型:与安装无关的自由变量可能被启发式
+/// 置真(真实索引规模下曾把 qemu-hwe/dbus-x11 等无关候选拉进变更集),
+/// 且已装包的依赖组即使已有保持的已装满足者,模型也可能冗余置真其他
+/// 候选满足者。这里从模型真值中的"保持的已装单元 ∪ 本地 deb"出发,
+/// 逐组贪心:组已被必要集满足则不新增;否则按 satisfiers 顺序(直连
+/// 在前、贴近 apt 的命名偏好)取首个模型置真的满足者。所得子集仍是
+/// 原公式模型:每个必需单元的每个依赖组都有必要集内的满足者;
+/// AMO/冲突子句对真值子集封闭(子集不引入新的同为真对)。
+fn extract_needed(enc: &Encoding<'_>, model: &HashSet<usize>) -> HashSet<usize> {
+    fn unit_idx(enc: &Encoding<'_>, u: Unit) -> usize {
+        match u {
+            Unit::Installed(i) => i,
+            Unit::Candidate(c) => enc.n_installed + c,
+        }
+    }
+    // 已装保持集:模型真值中的已装单元全部保留(不参与可达性裁剪)
+    let mut needed: HashSet<usize> = (0..enc.n_installed)
+        .filter(|i| model.contains(i))
+        .collect();
+    if enc.local.is_some() {
+        needed.insert(enc.n_installed + enc.n_cands);
+    }
+    let mut queue: Vec<usize> = needed.iter().copied().collect();
+    while let Some(idx) = queue.pop() {
+        let meta = enc.meta(enc.unit(idx));
+        for group in meta.depends.iter().chain(meta.pre_depends.iter()) {
+            // 组已被必要集满足则不新增(模型可能冗余置真其他满足者)
+            if group.iter().any(|d| {
+                enc.satisfiers(d)
+                    .iter()
+                    .any(|&s| needed.contains(&unit_idx(enc, s)))
+            }) {
+                continue;
+            }
+            // 组未被满足:按 satisfiers 顺序取首个模型置真的满足者
+            for d in group {
+                let chosen = enc
+                    .satisfiers(d)
+                    .into_iter()
+                    .map(|s| unit_idx(enc, s))
+                    .find(|&s_idx| model.contains(&s_idx));
+                if let Some(s_idx) = chosen {
+                    if needed.insert(s_idx) {
+                        queue.push(s_idx);
+                    }
+                    break;
+                }
+            }
+        }
+    }
+    needed
+}
+
 fn encode_and_solve(sys: &SysState, local: crate::sysstate::Candidate) -> Verdict {
     let enc = Encoding::new(sys, Some(local));
     let n_units = enc.n_installed + enc.n_cands + usize::from(enc.local.is_some());
@@ -286,14 +379,19 @@ fn encode_and_solve(sys: &SysState, local: crate::sysstate::Candidate) -> Verdic
         .expect("resolve 已注入本地候选");
 
     let mut solver = Solver::new();
+    let mut lits: Vec<Lit> = Vec::new();
+    let mut sats: Vec<Unit> = Vec::new();
 
     // 目标:本地 deb 强制选中
-    add_clause(&mut solver, vec![enc.plit(local_idx)]);
+    lits.push(enc.plit(local_idx));
+    add_clause(&mut solver, &mut lits);
 
     // Essential 包强制保持安装(旧版 gdebi 缺失的保护)
     for (i, pkg) in sys.installed.iter().enumerate() {
         if pkg.essential {
-            add_clause(&mut solver, vec![enc.plit(i)]);
+            lits.clear();
+            lits.push(enc.plit(i));
+            add_clause(&mut solver, &mut lits);
         }
     }
 
@@ -301,10 +399,10 @@ fn encode_and_solve(sys: &SysState, local: crate::sysstate::Candidate) -> Verdic
     for group in enc.groups.values() {
         for a in 0..group.len() {
             for b in a + 1..group.len() {
-                add_clause(
-                    &mut solver,
-                    vec![enc.nlit_of(group[a]), enc.nlit_of(group[b])],
-                );
+                lits.clear();
+                lits.push(enc.nlit_of(group[a]));
+                lits.push(enc.nlit_of(group[b]));
+                add_clause(&mut solver, &mut lits);
             }
         }
     }
@@ -314,15 +412,18 @@ fn encode_and_solve(sys: &SysState, local: crate::sysstate::Candidate) -> Verdic
         let u = enc.unit(idx);
         let meta = enc.meta(u);
         for group in meta.depends.iter().chain(meta.pre_depends.iter()) {
-            let mut lits = vec![enc.nlit(idx)];
+            lits.clear();
+            lits.push(enc.nlit(idx));
             for d in group {
-                lits.extend(enc.satisfiers(d).into_iter().map(|s| enc.plit_of(s)));
+                sats.clear();
+                enc.satisfiers_into(d, &mut sats);
+                lits.extend(sats.iter().map(|&s| enc.plit_of(s)));
             }
-            add_clause(&mut solver, lits);
+            add_clause(&mut solver, &mut lits);
         }
     }
 
-    // Conflicts(全单元互斥)与 Breaks(仅已安装)
+    // Conflicts(按名字索引取 victim,避免全单元平方级扫描)与 Breaks(仅已安装)
     for idx in 0..n_units {
         let u = enc.unit(idx);
         let meta = enc.meta(u);
@@ -336,56 +437,102 @@ fn encode_and_solve(sys: &SysState, local: crate::sysstate::Candidate) -> Verdic
             .chain(meta.breaks.iter().map(|g| (g, true)))
         {
             for c in deps {
-                for v_idx in 0..n_units {
-                    let v = enc.unit(v_idx);
+                // hits() 的名字命中 = 直接同名 ∪ 虚拟提供,victim 集按此索引
+                let base = base_name(&c.name);
+                let mut victims: Vec<Unit> = enc.by_name.get(base).cloned().unwrap_or_default();
+                victims.extend(enc.providers.get(base).cloned().unwrap_or_default());
+                for v in victims {
                     if v == u || (only_installed && !matches!(v, Unit::Installed(_))) {
                         continue;
                     }
+                    // 双方均已安装:存量态dpkg不会重新校验(apt 亦不重排),
+                    // 本事务只需不新增违规,历史违规不回溯修复 —— 否则
+                    // 真实系统的存量冲突对会破坏 keep-all 快路径
+                    if matches!(u, Unit::Installed(_)) && matches!(v, Unit::Installed(_)) {
+                        continue;
+                    }
                     if enc.hits(c, v) && !enc.replaces_covers(u, v) {
-                        add_clause(&mut solver, vec![enc.nlit(idx), enc.nlit(v_idx)]);
+                        let v_idx = match v {
+                            Unit::Installed(i) => i,
+                            Unit::Candidate(c) => enc.n_installed + c,
+                        };
+                        lits.clear();
+                        lits.push(enc.nlit(idx));
+                        lits.push(enc.nlit(v_idx));
+                        add_clause(&mut solver, &mut lits);
                     }
                 }
             }
         }
     }
 
-    // 求解 + 假设式精化(assume 每次整体替换假设集)
-    let mut forced: Vec<Lit> = Vec::new();
-    solver.assume(&forced);
-    if !solver.solve().unwrap_or(false) {
-        return Verdict::Uninstallable(gettext(
-            "Failed to satisfy all dependencies (conflicting requests or missing packages)",
-        ));
-    }
-
     let extract = |solver: &Solver| -> HashSet<usize> {
-        solver
+        let model: HashSet<usize> = solver
             .model()
             .unwrap_or_default()
             .iter()
             .filter(|l| l.is_positive())
             .map(|l| l.index())
-            .collect()
+            .collect();
+        extract_needed(&enc, &model)
     };
-    let mut selected = extract(&solver);
 
-    // 精化 1:最小化卸载 —— 对每个被卸载的包尝试强制保持
-    for i in 0..enc.n_installed {
-        if selected.contains(&i) {
-            continue;
+    // 快路径(apt 语义):已装包默认全部保持安装,卸载仅在冲突/换版强制时发生。
+    // 真实系统上已装数千包,若从默认假值模型出发逐包精化会产生数千次求解。
+    let keeps: Vec<Lit> = (0..enc.n_installed).map(|i| enc.plit(i)).collect();
+    solver.assume(&keeps);
+    let mut forced: Vec<Lit> = Vec::new();
+    let mut selected;
+    if solver.solve().unwrap_or(false) {
+        selected = extract(&solver);
+    } else {
+        // 存在必须卸载/换版的包:退回无保留假设,再逐包尝试保持(最小化卸载)
+        solver.assume(&forced);
+        if !solver.solve().unwrap_or(false) {
+            return Verdict::Uninstallable(gettext(
+                "Failed to satisfy all dependencies (conflicting requests or missing packages)",
+            ));
         }
-        let mut assumps = forced.clone();
-        assumps.push(enc.plit(i));
-        solver.assume(&assumps);
-        if solver.solve().unwrap_or(false) {
-            forced = assumps;
-            selected = extract(&solver);
+        selected = extract(&solver);
+        for i in 0..enc.n_installed {
+            if selected.contains(&i) {
+                continue;
+            }
+            let mut assumps = forced.clone();
+            assumps.push(enc.plit(i));
+            solver.assume(&assumps);
+            if solver.solve().unwrap_or(false) {
+                forced = assumps;
+                selected = extract(&solver);
+            }
         }
     }
 
-    // 精化 2:优先最新版本 —— 对每个键尝试强制最新非本地候选
-    for key in enc.groups.keys() {
-        let Some(cands) = sys.candidates.get(key) else {
+    // 精化:优先最新版本 —— 仅对"新装入"的键尝试强制最新非本地候选。
+    // 已装包保持安装时不升级(apt 语义);对无关键强制选择会把整个仓库
+    // 拉进安装集,且在真实规模(数万键)下产生海量重复求解。
+    let kept_installed_keys: HashSet<String> = sys
+        .installed
+        .iter()
+        .enumerate()
+        .filter(|(i, _)| selected.contains(i))
+        .map(|(_, p)| p.key.clone())
+        .collect();
+    let mut keys_touched: Vec<String> = selected
+        .iter()
+        .filter_map(|&i| {
+            let c = i.checked_sub(enc.n_installed)?;
+            (c < enc.n_cands)
+                .then(|| sys.all_candidates[c].pkg.key.clone())
+        })
+        .collect();
+    keys_touched.sort();
+    keys_touched.dedup();
+    for key in keys_touched {
+        if kept_installed_keys.contains(&key) {
+            continue;
+        }
+        let Some(cands) = sys.candidates.get(&key) else {
             continue;
         };
         // add_candidates 已按版本降序排列;手工构造状态时按列表顺序
@@ -645,7 +792,7 @@ mod tests {
         let mut st = sys_with(vec![]);
         st.add_candidates(vec![Candidate {
             pkg: Pkg {
-                provides: vec!["www-browser".into()],
+                provides: vec![("www-browser".into(), None)],
                 ..pkg("w3m", "0.5.3")
             },
             ..cand("w3m", "0.5.3", true)
@@ -654,6 +801,56 @@ mod tests {
         l.pkg.depends = dep("www-browser", "", "");
         let r = verdict_ok(encode_and_solve(&st, l));
         assert!(r.changes.install.contains(&"w3m".to_string()));
+    }
+
+    /// dpkg ≥1.17.11:版本化约束仅命中版本化提供 —— 已装包不得因
+    /// "版本化 Breaks × 无版本提供"被误判冲突(否则 Essential×Essential
+    /// 的假冲突会让真实系统上所有包误报不可安装)
+    #[test]
+    fn versioned_breaks_miss_unversioned_provider() {
+        let st = sys_with(vec![
+            Pkg {
+                essential: true,
+                breaks: dep("lsb-base", "<<", "3.3"),
+                ..pkg("dpkg", "1.0")
+            },
+            Pkg {
+                essential: true,
+                provides: vec![("lsb-base".into(), None)],
+                ..pkg("sysvinit-utils", "3.0")
+            },
+        ]);
+        let r = verdict_ok(encode_and_solve(&st, local("myapp", "1.0")));
+        assert!(r.changes.remove.is_empty());
+    }
+
+    /// 版本化提供可满足版本化依赖;无版本提供不可
+    #[test]
+    fn versioned_dep_needs_versioned_provide() {
+        let mut st = sys_with(vec![]);
+        st.add_candidates(vec![Candidate {
+            pkg: Pkg {
+                provides: vec![("www-browser".into(), Some("1.0".into()))],
+                ..pkg("w3m", "0.5.3")
+            },
+            ..cand("w3m", "0.5.3", true)
+        }]);
+        let mut l = local("myapp", "1.0");
+        l.pkg.depends = dep("www-browser", ">=", "0.9");
+        assert!(verdict_ok(encode_and_solve(&st, l.clone()))
+            .changes
+            .install
+            .contains(&"w3m".to_string()));
+        // 仅无版本提供时不满足版本化依赖
+        let mut st2 = sys_with(vec![]);
+        st2.add_candidates(vec![Candidate {
+            pkg: Pkg {
+                provides: vec![("www-browser".into(), None)],
+                ..pkg("w3m", "0.5.3")
+            },
+            ..cand("w3m", "0.5.3", true)
+        }]);
+        assert_uninstallable(encode_and_solve(&st2, l));
     }
 
     #[test]
@@ -675,11 +872,78 @@ mod tests {
         assert_eq!(r.changes.install, vec!["myapp".to_string()]);
     }
 
+    /// ":any" 架构限定匹配任意架构(dpkg 语义):已装包的 python3:any
+    /// 类依赖必须命中已装 python3:amd64,否则 satisfiers 为空会生成
+    /// 强制卸载的单元子句,keep-all 快路径 UNSAT 且连带误删依赖方
+    #[test]
+    fn any_arch_qualifier_matches_installed() {
+        let st = sys_with(vec![pkg("python3", "3.12")]);
+        let mut l = local("app", "1.0");
+        l.pkg.depends = dep("python3:any", "", "");
+        let r = verdict_ok(encode_and_solve(&st, l));
+        assert!(r.downloads.is_empty());
+        assert_eq!(r.changes.install, vec!["app".to_string()]);
+        assert!(r.changes.remove.is_empty());
+    }
+
     #[test]
     fn ver_matches_operators() {
         assert!(ver_matches("2.39", ">=", "2.30"));
         assert!(!ver_matches("1.0", "<<", "1.0"));
         assert!(ver_matches("1.0", "=", "1.0"));
         assert!(ver_matches("1.0", ">", "0.9"));
+    }
+
+    /// 无关的仓库候选不得被拉进安装集(精化只作用于已选中的键;
+    /// 曾在真实规模上把整个仓库标记为待安装并产生海量重复求解)
+    #[test]
+    fn unrelated_repo_candidates_not_installed() {
+        let mut st = sys_with(vec![]);
+        let cands: Vec<Candidate> = (0..200)
+            .map(|i| cand(&format!("unrel-{i}"), "1.0", true))
+            .collect();
+        st.add_candidates(cands);
+        let r = verdict_ok(encode_and_solve(&st, local("myapp", "1.0")));
+        assert_eq!(r.changes.install, vec!["myapp".to_string()]);
+        assert!(r.downloads.is_empty());
+    }
+
+    /// 与安装无关的已装包必须保持(keep-all 快路径;曾因默认假值模型
+    /// 把数千已装包误报为"待卸载")
+    #[test]
+    fn unrelated_installed_packages_kept() {
+        let st = sys_with(vec![pkg("unused-a", "1.0"), pkg("unused-b", "2.0")]);
+        let r = verdict_ok(encode_and_solve(&st, local("myapp", "1.0")));
+        assert!(r.changes.remove.is_empty());
+        assert_eq!(r.changes.install, vec!["myapp".to_string()]);
+    }
+
+    /// 版本门槛强制换版:已装旧版被新候选替换,替换不算卸载
+    #[test]
+    fn version_gate_replaces_installed() {
+        let mut st = sys_with(vec![pkg("libx", "1.0")]);
+        st.add_candidates(vec![cand("libx", "2.0", true)]);
+        let mut l = local("myapp", "1.0");
+        l.pkg.depends = dep("libx", ">=", "2.0");
+        let r = verdict_ok(encode_and_solve(&st, l));
+        assert!(r.changes.install.contains(&"libx".to_string()));
+        assert!(r.changes.remove.is_empty());
+    }
+
+    /// 冲突编码按名字索引取 victim:候选带冲突项时复杂度与命中数相关,
+    /// 而非单元总数平方(真实索引规模下曾是分钟级卡死)
+    #[test]
+    fn conflicts_encoding_scales_by_name_index() {
+        let mut st = sys_with(vec![]);
+        let cands: Vec<Candidate> = (0..500)
+            .map(|i| {
+                let mut c = cand(&format!("c-{i}"), "1.0", true);
+                c.pkg.conflicts = dep("definitely-not-installed", "", "");
+                c
+            })
+            .collect();
+        st.add_candidates(cands);
+        let r = verdict_ok(encode_and_solve(&st, local("myapp", "1.0")));
+        assert_eq!(r.changes.install, vec!["myapp".to_string()]);
     }
 }

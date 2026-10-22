@@ -13,7 +13,8 @@ pub enum FdebmError {
     OpenFailed(PathBuf, String),
     NotADeb(PathBuf),
     MissingControl,
-    UnsupportedCompression(&'static str),
+    /// control.tar 解压失败:原因
+    ControlDecompress(String),
     MissingField(&'static str),
     Io(io::Error),
     /// 子进程(dpkg 系统能力调用)执行失败:命令 + stderr 摘要
@@ -44,10 +45,9 @@ impl fmt::Display for FdebmError {
                 &[&path.display().to_string()],
             ),
             Self::MissingControl => gettext("control file not found in package"),
-            Self::UnsupportedCompression(compression) => tf(
-                "{0} compressed control.tar is not supported yet (only gzip/plain)",
-                &[compression],
-            ),
+            Self::ControlDecompress(reason) => {
+                tf("cannot decompress control archive: {0}", &[reason])
+            }
             Self::MissingField(name) => tf("missing control field: {0}", &[name]),
             // 透明转发:OS strerror 已随系统 locale 本地化,不再包裹
             Self::Io(e) => return write!(f, "{e}"),

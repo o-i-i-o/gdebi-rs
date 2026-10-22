@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
-Name=Package Installer (fdebm)
-Name[zh_CN]=软件包安装器 (fdebm)
+Name=Fdebm
+Name[zh_CN]=Fdebm
 GenericName=Package Installer
 GenericName[zh_CN]=软件包安装器
 Comment=Install local .deb packages and resolve dependencies

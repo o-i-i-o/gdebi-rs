@@ -256,4 +256,84 @@ mod tests {
         assert_eq!(deb.field_trimmed("Package"), Some("control-zst"));
         assert_eq!(deb.control_filelist().unwrap(), vec!["./", "control"]);
     }
+
+    /// dpkg-deb 压缩矩阵(-Zgzip/-Zxz/-Zzstd/-Znone,与 Ubuntu/Debian
+    /// 各版本默认压缩兼容):open/字段/成员列表/ar 成员名/原始 control
+    /// 字节全部对齐 dpkg-deb(1) 规范行为
+    #[test]
+    fn opens_all_dpkg_compression_types() {
+        let cases = [
+            ("ctrl-gz", "control.tar.gz"),
+            ("ctrl-xz", "control.tar.xz"),
+            ("ctrl-zstd", "control.tar.zst"),
+            ("ctrl-none", "control.tar"),
+        ];
+        for (pkg, member) in cases {
+            let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join(format!("../../tests/{pkg}_1.0_all.deb"));
+            // ar 成员名符合规范(control.tar.<ext> / control.tar)
+            let mut names = Vec::new();
+            let mut archive = ar::Archive::new(File::open(&path).unwrap());
+            while let Some(entry) = archive.next_entry() {
+                names.push(
+                    String::from_utf8_lossy(entry.unwrap().header().identifier()).into_owned(),
+                );
+            }
+            assert!(names.contains(&member.to_string()), "{pkg}: {names:?}");
+            assert!(names.contains(&"debian-binary".to_string()), "{pkg}");
+
+            let deb = DebFile::open(&path).unwrap_or_else(|e| panic!("open {pkg}: {e}"));
+            assert_eq!(deb.field_trimmed("Package"), Some(pkg), "{pkg}");
+            assert_eq!(deb.control_filelist().unwrap(), vec!["./", "control"], "{pkg}");
+            // control 原始字节与 dpkg-deb -f 逐字节一致(压缩不得改动内容)
+            let out = Command::new("dpkg-deb").arg("-f").arg(&path).output().unwrap();
+            assert!(out.status.success(), "dpkg-deb -f {pkg}");
+            assert_eq!(deb.raw_control(), out.stdout.as_slice(), "{pkg} control bytes");
+        }
+    }
+
+    /// data.tar.zst(deb 全 zstd 场景):文件列表与内容提取
+    /// 经 dpkg-deb --fsys-tarfile 链路
+    #[test]
+    fn data_tar_zstd_filelist_and_content() {
+        let path =
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../tests/data-zst_1.0_all.deb");
+        let deb = DebFile::open(&path).expect("open data.tar.zst deb");
+        assert_eq!(deb.field_trimmed("Package"), Some("data-zst"));
+        let files = deb.data_filelist().unwrap();
+        assert!(
+            files.contains(&"usr/share/doc/data-zst/README".to_string()),
+            "{files:?}"
+        );
+        let readme = deb.data_content("usr/share/doc/data-zst/README").unwrap();
+        assert_eq!(String::from_utf8_lossy(&readme), "hello-data\n");
+    }
+
+    /// 截断的压缩流不得 panic,必须返回 ControlDecompress
+    /// (样本取自规范 fixture 的真实压缩流,截去后半)
+    #[test]
+    fn truncated_compressed_streams_report_decompress_error() {
+        let truncate_member = |deb_path: &str, member: &str| -> Vec<u8> {
+            let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(deb_path);
+            let mut archive = ar::Archive::new(File::open(&path).unwrap());
+            while let Some(entry) = archive.next_entry() {
+                let mut entry = entry.unwrap();
+                if entry.header().identifier() == member.as_bytes() {
+                    let mut data = Vec::new();
+                    entry.read_to_end(&mut data).unwrap();
+                    data.truncate(data.len() / 2);
+                    return data;
+                }
+            }
+            panic!("member {member} not found");
+        };
+        let gz = truncate_member("../../tests/ctrl-gz_1.0_all.deb", "control.tar.gz");
+        let zst = truncate_member("../../tests/ctrl-zstd_1.0_all.deb", "control.tar.zst");
+        for (what, data) in [("gz", gz), ("zstd", zst)] {
+            match decompress_control_tar(&data) {
+                Err(FdebmError::ControlDecompress(_)) => {}
+                other => panic!("truncated {what}: expected ControlDecompress, got {other:?}"),
+            }
+        }
+    }
 }

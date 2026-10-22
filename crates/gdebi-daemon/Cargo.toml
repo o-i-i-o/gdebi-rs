@@ -1,0 +1,18 @@
+[package]
+name = "gdebi-daemon"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "gdebi-rs privileged D-Bus daemon (analyze/install/remove local debs)"
+
+[[bin]]
+name = "gdebi-daemon"
+path = "src/main.rs"
+
+[dependencies]
+gdebi-core.workspace = true
+zbus.workspace = true
+async-io.workspace = true
+async-channel.workspace = true
+# 信号体类型约束(Serialize + DynamicType);zvariant 已传递引入
+serde.workspace = true

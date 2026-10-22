@@ -3,10 +3,17 @@ name = "gdebi-core"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Local .deb parsing and dependency-check core (Rust rewrite of gdebi)"
+description = "Local .deb parsing, pure-Rust dependency solving and install orchestration core (Rust rewrite of gdebi)"
 
 [dependencies]
 ar.workspace = true
 tar.workspace = true
 flate2.workspace = true
 gettext-rs.workspace = true
+libc.workspace = true
+varisat.workspace = true
+ureq.workspace = true
+sha2.workspace = true
+lz4_flex.workspace = true
+lzma-rs.workspace = true
+ruzstd.workspace = true

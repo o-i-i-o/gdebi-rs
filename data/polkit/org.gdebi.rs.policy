@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Polkit 策略(org.gdebi.rs)
+  部署: cp 到 /usr/share/polkit-1/actions/org.gdebi.rs.policy
+
+  分析(AnalyzeLocalFile)免授权(只读);安装/卸载各需一次管理员认证,
+  auth_admin_keep 在短时间内免重复认证(与原版 gdebi 的 gksu/pkexec
+  体验对齐,避免批量操作时反复输密码)。
+-->
+<!DOCTYPE policyconfig PUBLIC
+ "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<policyconfig>
+
+  <action id="org.gdebi.rs.install-local-package">
+    <description gettext-domain="gdebi-rs">Install local package file</description>
+    <message gettext-domain="gdebi-rs">Authentication is required to install a local package file</message>
+    <defaults>
+      <allow_any>auth_admin_keep</allow_any>
+      <allow_inactive>auth_admin_keep</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+  </action>
+
+  <action id="org.gdebi.rs.remove-package">
+    <description gettext-domain="gdebi-rs">Remove an installed package</description>
+    <message gettext-domain="gdebi-rs">Authentication is required to remove a package</message>
+    <defaults>
+      <allow_any>auth_admin_keep</allow_any>
+      <allow_inactive>auth_admin_keep</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+  </action>
+
+</policyconfig>

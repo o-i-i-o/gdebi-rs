@@ -1,21 +1,30 @@
-//! GTK4 前端(gtk4 为硬依赖)。
+//! GTK4 前端(gtk4 为硬依赖)—— 瘦客户端。
 //! 布局对齐旧版 gdebi-gtk 的 data/gdebi.ui(window_main / dialog_deb_install):
 //! 菜单栏(File/Help)+ 左侧信息表(Package/Status)+
 //! 右侧动作按钮列 + Notebook(Description/Details)+ 底部缓存进度条与状态栏 +
 //! 安装/移除进度对话框(Terminal expander + autoclose)。
 //! 文案沿用旧版原文并经 gettext 国际化(域 gdebi,复用旧版 po,见 core::i18n)。
-//! 安装/移除在后台线程执行,事件经 async-channel 回主线程呈现
-//! (gtk 对象不跨线程,ThreadUi 只负责把事件投入 channel)。
+//!
+//! 与旧版架构的差异(crates/readme.md 路线二):本前端永不 root、不做
+//! 依赖求解、不执行 dpkg —— 三者全部委托特权守护进程 org.gdebi.Rs
+//! (zbus 纯 Rust 客户端):
+//! - 分析(AnalyzeLocalFile):本地解析 deb 展示元数据/文件树/lintian,
+//!   依赖结论异步取自守护进程(带代际号丢弃过期结果)
+//! - 安装/移除(InstallLocalFile/RemovePackage):返回事务 id,界面订阅
+//!   OutputLine/ProgressChanged/Finished 信号驱动进度对话框
+//! - 提权:Polkit 由守护进程侧发起,客户端不再 pkexec 重启自身
+//!   (旧版 gksu/pkexec --non-interactive 重启契约随之移除)
 //!
 //! 未还原部分(不留占位):button_download(远程 deb 下载)。
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::rc::Rc;
 use std::sync::mpsc as std_mpsc;
 
 use clap::{CommandFactory, FromArgMatches, Parser};
+use futures_lite::StreamExt;
 use gtk4 as gtk;
 use gtk4::prelude::*;
 use gtk4::{
@@ -23,12 +32,11 @@ use gtk4::{
     MessageType, ResponseType,
 };
 
-use gdebi_core::depcheck::{Changes, DepChecker, Verdict};
 use gdebi_core::flow::{self, PackageInfo};
 use gdebi_core::i18n;
 use gdebi_core::i18n::{gettext, ngettext, tf};
-use gdebi_core::install;
-use gdebi_core::ui::{AlertKind, InstallProgress, Ui};
+use gdebi_core::solver::Changes;
+use gdebi_core::ui::{AlertKind, Ui};
 use gdebi_core::{DebFile, GdebiError};
 
 #[derive(Parser)]
@@ -37,14 +45,6 @@ pub struct Args {
     /// Set an APT configuration option
     #[arg(short = 'o', long = "option")]
     pub apt_opts: Vec<String>,
-
-    /// 非 root 时经 pkexec 提权重启后自动执行动作(旧版 gksu 重启契约)
-    #[arg(short = 'n', long = "non-interactive", hide = true)]
-    pub non_interactive: bool,
-
-    /// 与 --non-interactive 同用:执行移除而非安装(旧版 --remove)
-    #[arg(long = "remove", hide = true)]
-    pub remove: bool,
 
     /// 要打开的 .deb 文件
     #[arg(value_name = "FILE")]
@@ -129,44 +129,64 @@ fn show_alert<W: IsA<gtk::Window>>(parent: &W, kind: AlertKind, header: &str, bo
 }
 
 // ---------------------------------------------------------------------------
-// 后台动作线程 → 主线程事件流
+// 守护进程客户端(zbus,系统总线 org.gdebi.Rs)
 // ---------------------------------------------------------------------------
 
-enum ActionEvent {
-    Alert(AlertKind, String, Option<String>),
-    OutputLine(String),
-    Finished(Result<i32, String>),
+/// 依赖检查结论(守护进程 AnalyzeLocalFile 返回值)
+struct Analysis {
+    installable: bool,
+    failure: String,
+    changes: Changes,
+    installed_version: String,
 }
 
-/// 线程侧 Ui/InstallProgress:仅投递事件(confirm 在线程内不可用)
-struct ThreadUi {
-    tx: async_channel::Sender<ActionEvent>,
+#[zbus::proxy(
+    interface = "org.gdebi.Rs",
+    default_service = "org.gdebi.Rs",
+    default_path = "/org/gdebi/Rs"
+)]
+trait GdebiRs {
+    /// 只读依赖分析(免 Polkit 授权)
+    fn analyze_local_file(
+        &self,
+        path: &str,
+        apt_opts: &[&str],
+    ) -> zbus::Result<(bool, String, Vec<String>, Vec<String>, Vec<String>, String)>;
+
+    /// 安装事务(授权/下载/dpkg 在守护进程内执行)→ 事务 id
+    fn install_local_file(&self, path: &str, apt_opts: &[&str]) -> zbus::Result<u32>;
+
+    /// 卸载事务 → 事务 id
+    fn remove_package(&self, name: &str) -> zbus::Result<u32>;
 }
 
-impl Ui for ThreadUi {
-    fn alert(&self, kind: AlertKind, header: &str, body: Option<&str>) -> Result<(), GdebiError> {
-        // 线程上下文:send() 返回 future,必须 send_blocking 才真正入队
-        let _ = self
-            .tx
-            .send_blocking(ActionEvent::Alert(
-                kind,
-                header.to_string(),
-                body.map(String::from),
-            ));
-        Ok(())
-    }
-
-    fn confirm(&self, _header: &str, _body: Option<&str>) -> Result<bool, GdebiError> {
-        Ok(false) // 动作流程不调用 confirm;trait 契约占位
-    }
+/// 系统总线连接(事务与信号须在同一连接上:信号按唯一名投递)
+async fn daemon() -> Result<zbus::Connection, String> {
+    zbus::Connection::system().await.map_err(|e| e.to_string())
 }
 
-impl InstallProgress for ThreadUi {
-    fn output_line(&self, line: &str) {
-        let _ = self
-            .tx
-            .send_blocking(ActionEvent::OutputLine(line.to_string()));
-    }
+/// 守护进程侧依赖分析(重活在守护进程线程执行,客户端只等结果)
+async fn analyze_via_daemon(opts: &[String], file: &Path) -> Result<Analysis, String> {
+    let conn = daemon().await?;
+    let client = GdebiRsProxy::builder(&conn)
+        .build()
+        .await
+        .map_err(|e| e.to_string())?;
+    let opts: Vec<&str> = opts.iter().map(String::as_str).collect();
+    let (installable, failure, install, remove, unauthenticated, installed_version) = client
+        .analyze_local_file(&file.to_string_lossy(), &opts)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(Analysis {
+        installable,
+        failure,
+        changes: Changes {
+            install,
+            remove,
+            unauthenticated,
+        },
+        installed_version,
+    })
 }
 
 // ---------------------------------------------------------------------------
@@ -193,9 +213,10 @@ struct MainWindow {
     statusbar: gtk::Statusbar,
     status_ctx: u32,
     apt_opts: Vec<String>,
-    non_interactive: bool,
     current_file: Rc<RefCell<Option<PathBuf>>>,
     changes: Rc<RefCell<Option<Changes>>>,
+    /// 分析代际号:文件切换/刷新后丢弃过期的守护进程结论
+    analysis_gen: Cell<u64>,
 }
 
 pub fn run() {
@@ -213,13 +234,11 @@ pub fn run() {
     app.run_with_args(&["gdebi-rs-gtk"]);
 }
 
-/// 启动动作上下文:文件 + 提权重启模式(旧版 gksu 重启后的 --non-interactive)
+/// 启动动作上下文:命令行给的文件与 apt 选项
 #[derive(Debug, Clone)]
 struct LaunchAction {
     file: Option<PathBuf>,
     apt_opts: Vec<String>,
-    non_interactive: bool,
-    remove: bool,
 }
 
 impl Args {
@@ -227,8 +246,6 @@ impl Args {
         LaunchAction {
             file: self.file,
             apt_opts: self.apt_opts,
-            non_interactive: self.non_interactive,
-            remove: self.remove,
         }
     }
 }
@@ -243,28 +260,16 @@ fn activate(app: &Application, action: LaunchAction) {
         .show_menubar(true)
         .build();
 
-    let gui = build_window(&window, action.apt_opts, action.non_interactive);
+    let gui = build_window(&window, action.apt_opts);
     setup_actions(app, &gui);
 
     if let Some(f) = action.file {
         load_deb(&gui, &f);
-        // 提权重启后(root):加载完成即执行动作,不再重复确认
-        if action.non_interactive {
-            if action.remove {
-                on_remove_clicked(&gui);
-            } else {
-                on_install_clicked(&gui);
-            }
-        }
     }
     window.present();
 }
 
-fn build_window(
-    window: &gtk::ApplicationWindow,
-    apt_opts: Vec<String>,
-    non_interactive: bool,
-) -> Rc<MainWindow> {
+fn build_window(window: &gtk::ApplicationWindow, apt_opts: Vec<String>) -> Rc<MainWindow> {
     // 左侧信息表(旧版 table1):Package / Status
     let label_name = gtk::Label::default();
     label_name.set_markup("<b><big>   </big></b>");
@@ -450,9 +455,9 @@ fn build_window(
         statusbar,
         status_ctx,
         apt_opts,
-        non_interactive,
         current_file: Rc::new(RefCell::new(None)),
         changes: Rc::new(RefCell::new(None)),
+        analysis_gen: Cell::new(0),
     });
 
     // Install / Remove / Details 接线
@@ -557,7 +562,7 @@ fn fill_files(gui: &MainWindow, deb: &DebFile) {
     gui.tree_files.expand_all();
 }
 
-/// 后台运行 lintian 并流式回填(旧版 _run_lintian;非交互模式跳过)
+/// 后台运行 lintian 并流式回填(旧版 _run_lintian)
 fn run_lintian(gui: &MainWindow, file: &Path) {
     let buf = gui.lintian_output.buffer();
     if !Path::new("/usr/bin/lintian").exists() {
@@ -715,12 +720,13 @@ fn scroll(w: &impl IsA<gtk::Widget>) -> gtk::ScrolledWindow {
         .build()
 }
 
-/// 打开并填充窗口(旧版 set_deb;同步执行,与旧版相同的短暂阻塞)
+/// 打开并填充窗口(旧版 set_deb):本地解析元数据/文件树/lintian,
+/// 依赖结论异步取自守护进程(瘦客户端不读 apt 索引)
 fn load_deb(gui: &Rc<MainWindow>, file: &Path) {
     gui.statusbar.push(gui.status_ctx, gettext("Loading...").as_str());
-    let ui = GtkUi {
-        parent: gui.window.clone().upcast(),
-    };
+    // 新代际:使在途的旧分析结果失效
+    let generation = gui.analysis_gen.get() + 1;
+    gui.analysis_gen.set(generation);
     *gui.changes.borrow_mut() = None;
     *gui.current_file.borrow_mut() = Some(file.to_path_buf());
 
@@ -742,7 +748,8 @@ fn load_deb(gui: &Rc<MainWindow>, file: &Path) {
     let deb = match DebFile::open(file) {
         Ok(d) => d,
         Err(e) => {
-            let _ = ui.alert(
+            show_alert(
+                &gui.window,
                 AlertKind::Error,
                 &gettext("Could not open the software package"),
                 Some(&e.to_string()),
@@ -754,106 +761,117 @@ fn load_deb(gui: &Rc<MainWindow>, file: &Path) {
     let info = flow::describe_deb(&deb);
     fill_static(gui, &info, &deb);
 
-    // 文件树与 lintian(旧版 set_deb 顺序:文件树 → lintian → 依赖检查;
-    // lintian 仅非交互模式运行,旧版 L325)
+    // 文件树与 lintian(旧版 set_deb 顺序:文件树 → lintian → 依赖检查)
     fill_files(gui, &deb);
-    if !gui.non_interactive {
-        run_lintian(gui, file);
-    }
+    run_lintian(gui, file);
 
-    // 依赖检查;错误经 ui.alert 呈现(顺序与 CLI open_and_check 一致)
-    let checker = match DepChecker::new(&gui.apt_opts) {
-        Ok(c) => c,
-        Err(e) => {
-            let _ = ui.alert(
-                AlertKind::Error,
-                &gettext("Error opening the cache"),
-                Some(&e.to_string()),
-            );
-            gui.statusbar.pop(gui.status_ctx);
-            return;
+    // 依赖结论取自守护进程:先复位按钮,呈现检查中状态
+    gui.button_install.set_sensitive(false);
+    gui.button_remove.hide();
+    gui.button_details.hide();
+    gui.label_status.set_text(&gettext("Checking dependencies..."));
+    gui.statusbar.pop(gui.status_ctx);
+
+    let gui_wait = gui.clone();
+    let file2 = file.to_path_buf();
+    let opts = gui.apt_opts.clone();
+    let version = info.version.clone();
+    glib::spawn_future_local(async move {
+        let analysis = analyze_via_daemon(&opts, &file2).await;
+        if gui_wait.analysis_gen.get() != generation {
+            return; // 过期结果:期间已打开别的文件
         }
-    };
-    let verdict = match checker.check(&deb, file) {
-        Ok(v) => v,
+        apply_verdict(&gui_wait, &version, analysis);
+    });
+}
+
+/// 呈现依赖检查结论(旧版 verdict 分支的呈现逻辑)
+fn apply_verdict(gui: &Rc<MainWindow>, version: &str, analysis: Result<Analysis, String>) {
+    let analysis = match analysis {
+        Ok(a) => a,
         Err(e) => {
-            let _ = ui.alert(
+            // 守护进程把缓存打开失败与求解错误折叠为 Err;
+            // 旧版分 "Error opening the cache" / "Dependency check failed"
+            // 两文案,协议上无法区分,统一用后者并附详情
+            show_alert(
+                &gui.window,
                 AlertKind::Error,
                 &gettext("Dependency check failed"),
-                Some(&e.to_string()),
+                Some(&e),
             );
-            gui.statusbar.pop(gui.status_ctx);
+            gui.label_status.set_markup(&tf(
+                "<span foreground=\"red\" weight=\"bold\">Error: {0}</span>",
+                &[&glib::markup_escape_text(&e)],
+            ));
             return;
         }
     };
 
-    match verdict {
-        Verdict::Uninstallable(failure) => {
-            // 旧版 check 失败分支:红色错误 + install 禁用 + details 隐藏
-            gui.label_status.set_markup(&tf(
-                "<span foreground=\"red\" weight=\"bold\">Error: {0}</span>",
-                &[&glib::markup_escape_text(&failure)],
-            ));
-            gui.button_install.set_sensitive(false);
+    if !analysis.installable {
+        // 旧版 check 失败分支:红色错误 + install 禁用 + details 隐藏
+        gui.label_status.set_markup(&tf(
+            "<span foreground=\"red\" weight=\"bold\">Error: {0}</span>",
+            &[&glib::markup_escape_text(&analysis.failure)],
+        ));
+        gui.button_install.set_sensitive(false);
+        gui.button_details.hide();
+        gui.button_remove.hide();
+        return;
+    }
+
+    let changes = analysis.changes;
+    let (inst, rm) = (&changes.install, &changes.remove);
+    // 旧版 get_changes 的 deps markup(ngettext 处理复数)
+    let mut deps = String::new();
+    if !rm.is_empty() {
+        deps.push_str(&tf(
+            &ngettext(
+                "Requires the <b>removal</b> of {0} package",
+                "Requires the <b>removal</b> of {0} packages",
+                rm.len() as u32,
+            ),
+            &[&rm.len().to_string()],
+        ));
+        deps.push('\n');
+    }
+    if !inst.is_empty() {
+        deps.push_str(&tf(
+            &ngettext(
+                "Requires the installation of {0} package",
+                "Requires the installation of {0} packages",
+                inst.len() as u32,
+            ),
+            &[&inst.len().to_string()],
+        ));
+        deps.push('\n');
+    }
+
+    let same_installed =
+        !analysis.installed_version.is_empty() && analysis.installed_version == version;
+
+    if same_installed {
+        // 旧版同版本分支:状态文案 + Reinstall + Remove 显示
+        gui.label_status
+            .set_text(&gettext("Same version is already installed"));
+        gui.button_install
+            .set_label(&gettext("_Reinstall Package"));
+        gui.button_remove.set_visible(true);
+        gui.button_remove.set_sensitive(true);
+        gui.button_details.hide();
+    } else {
+        gui.button_install.set_label(&gettext("_Install Package"));
+        gui.button_remove.hide();
+        if !rm.is_empty() || !inst.is_empty() {
+            gui.label_status.set_markup(&deps);
+            gui.button_details.show();
+        } else {
+            gui.label_status
+                .set_text(&gettext("All dependencies are satisfied"));
             gui.button_details.hide();
-            gui.button_remove.hide();
-        }
-        Verdict::Installable(changes) => {
-            let (inst, rm) = (&changes.install, &changes.remove);
-            // 旧版 get_changes 的 deps markup(ngettext 处理复数)
-            let mut deps = String::new();
-            if !rm.is_empty() {
-                deps.push_str(&tf(
-                    &ngettext(
-                        "Requires the <b>removal</b> of {0} package",
-                        "Requires the <b>removal</b> of {0} packages",
-                        rm.len() as u32,
-                    ),
-                    &[&rm.len().to_string()],
-                ));
-                deps.push('\n');
-            }
-            if !inst.is_empty() {
-                deps.push_str(&tf(
-                    &ngettext(
-                        "Requires the installation of {0} package",
-                        "Requires the installation of {0} packages",
-                        inst.len() as u32,
-                    ),
-                    &[&inst.len().to_string()],
-                ));
-                deps.push('\n');
-            }
-
-            let same_installed =
-                checker.installed_version(&info.package) == Some(info.version.as_str());
-
-            if same_installed {
-                // 旧版同版本分支:状态文案 + Reinstall + Remove 显示
-                gui.label_status
-                    .set_text(&gettext("Same version is already installed"));
-                gui.button_install
-                    .set_label(&gettext("_Reinstall Package"));
-                gui.button_remove.set_visible(true);
-                gui.button_remove.set_sensitive(true);
-                gui.button_details.hide();
-            } else {
-                gui.button_install.set_label(&gettext("_Install Package"));
-                gui.button_remove.hide();
-                if !rm.is_empty() || !inst.is_empty() {
-                    gui.label_status.set_markup(&deps);
-                    gui.button_details.show();
-                } else {
-                    gui.label_status
-                        .set_text(&gettext("All dependencies are satisfied"));
-                    gui.button_details.hide();
-                }
-            }
-            gui.button_install.set_sensitive(true);
-            *gui.changes.borrow_mut() = Some(changes);
         }
     }
-    gui.statusbar.pop(gui.status_ctx);
+    gui.button_install.set_sensitive(true);
+    *gui.changes.borrow_mut() = Some(changes);
 }
 
 /// Details 页签与描述的静态填充(旧版 label_name/textview_description)
@@ -876,21 +894,26 @@ fn fill_static(gui: &MainWindow, info: &PackageInfo, deb: &DebFile) {
 }
 
 // ---------------------------------------------------------------------------
-// 安装 / 移除动作(对话框对齐 dialog_deb_install)
+// 安装 / 移除动作(对话框对齐 dialog_deb_install;执行体在守护进程)
 // ---------------------------------------------------------------------------
 
-type ActionWork =
-    Box<dyn FnOnce(&ThreadUi, &Changes, &Path, &[String]) -> Result<i32, GdebiError> + Send>;
+/// 事务请求(选择守护进程方法)
+enum TxnRequest {
+    Install { file: PathBuf },
+    Remove { name: String },
+}
 
-/// 动作执行对话框:label_action + progressbar(pulse)+ label_install_status +
+/// 事务进度对话框:label_action + progressbar + label_install_status +
 /// Terminal expander + autoclose 勾选;Close 按钮运行中禁用;
-/// 期间主窗口禁用(旧版 set_sensitive),完成后恢复
-fn run_action_dialog(
-    gui: &MainWindow,
+/// 期间主窗口禁用(旧版 set_sensitive),完成后恢复。
+/// 执行流:连接系统总线 → 订阅信号(先于方法调用,防漏早期输出)→
+/// 调用 InstallLocalFile/RemovePackage → 信号泵直至 Finished。
+fn run_txn_dialog(
+    gui: &Rc<MainWindow>,
     action: &str,
     complete: String,
     failed: String,
-    work: ActionWork,
+    req: TxnRequest,
 ) {
     let dialog = gtk::Dialog::builder()
         .transient_for(&gui.window)
@@ -944,12 +967,16 @@ fn run_action_dialog(
     }
     gui.window.set_sensitive(false);
 
-    // pulse 定时器(子进程行输出无精确百分比;完成后置 1.0)
+    // pulse 定时器(dpkg 行输出无精确百分比;收到数值进度后切换为 fraction,
+    // 完成后置 1.0)
     let bar_pulse = bar.clone();
-    let pulse_id = glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
-        bar_pulse.pulse();
-        glib::ControlFlow::Continue
-    });
+    let mut pulse_id = Some(glib::timeout_add_local(
+        std::time::Duration::from_millis(100),
+        move || {
+            bar_pulse.pulse();
+            glib::ControlFlow::Continue
+        },
+    ));
 
     dialog.connect_response(|d, r| {
         if r == ResponseType::Close {
@@ -958,74 +985,159 @@ fn run_action_dialog(
     });
     dialog.present();
 
-    let (tx, rx) = async_channel::unbounded::<ActionEvent>();
-    let changes = gui.changes.borrow().clone().unwrap_or_default();
-    let file = gui.current_file.borrow().clone().unwrap_or_default();
-    let apt_opts = gui.apt_opts.clone();
-    std::thread::spawn(move || {
-        let th_ui = ThreadUi { tx: tx.clone() };
-        let res = work(&th_ui, &changes, &file, &apt_opts);
-        let _ = tx.send_blocking(ActionEvent::Finished(res.map_err(|e| e.to_string())));
-    });
-
     let statusbar = gui.statusbar.clone();
     let ctx = gui.status_ctx;
     let window = gui.window.clone();
-    let bar_done = bar.clone();
+    let gui_reload = gui.clone();
+    let apt_opts = gui.apt_opts.clone();
     glib::spawn_future_local(async move {
-        while let Ok(ev) = rx.recv().await {
-            match ev {
-                ActionEvent::Alert(kind, header, body) => {
-                    show_alert(&window, kind, &header, body.as_deref())
+        // 连接 + 订阅 + 发起事务;任一步失败即恢复界面并告警
+        let started = async {
+            let conn = daemon().await?;
+            let proxy = GdebiRsProxy::builder(&conn)
+                .build()
+                .await
+                .map_err(|e| e.to_string())?;
+            let sigs = proxy
+                .inner()
+                .receive_all_signals()
+                .await
+                .map_err(|e| e.to_string())?;
+            let id = match &req {
+                TxnRequest::Install { file } => {
+                    let opts: Vec<&str> = apt_opts.iter().map(String::as_str).collect();
+                    proxy
+                        .install_local_file(&file.to_string_lossy(), &opts)
+                        .await
+                        .map_err(|e| e.to_string())?
                 }
-                ActionEvent::OutputLine(line) => {
-                    label_status.set_text(&line);
-                    let buf = textview.buffer();
-                    let mut end = buf.end_iter();
-                    buf.insert(&mut end, &format!("{line}\n"));
-                    textview.scroll_to_iter(&mut end, 0.0, false, 0.0, 0.0);
+                TxnRequest::Remove { name } => proxy
+                    .remove_package(name)
+                    .await
+                    .map_err(|e| e.to_string())?,
+            };
+            Ok::<_, String>((sigs, id))
+        }
+        .await;
+
+        let (mut sigs, id) = match started {
+            Ok((s, id)) => (s, id),
+            Err(e) => {
+                if let Some(id) = pulse_id.take() {
+                    id.remove();
                 }
-                ActionEvent::Finished(res) => {
-                    pulse_id.remove();
-                    bar_done.set_fraction(1.0);
-                    if let Some(b) = &close_btn {
-                        b.set_sensitive(true);
+                bar.set_fraction(1.0);
+                if let Some(b) = &close_btn {
+                    b.set_sensitive(true);
+                }
+                window.set_sensitive(true);
+                statusbar.push(ctx, &failed);
+                show_alert(
+                    &window,
+                    AlertKind::Error,
+                    &gettext("gdebi error"),
+                    Some(&e),
+                );
+                return;
+            }
+        };
+
+        // 信号泵:OutputLine/ProgressChanged/Finished(按事务 id 过滤)
+        let mut ok = false;
+        while let Some(msg) = sigs.next().await {
+            let header = msg.header();
+            let Some(member) = header.member().map(|m| m.as_str()) else {
+                continue;
+            };
+            match member {
+                "OutputLine" => {
+                    if let Ok((sid, line)) = msg.body().deserialize::<(u32, String)>()
+                        && sid == id
+                    {
+                        label_status.set_text(&line);
+                        let buf = textview.buffer();
+                        let mut end = buf.end_iter();
+                        buf.insert(&mut end, &format!("{line}\n"));
+                        textview.scroll_to_iter(&mut end, 0.0, false, 0.0, 0.0);
                     }
-                    match res {
-                        Ok(0) => {
+                }
+                "ProgressChanged" => {
+                    if let Ok((sid, percent, desc)) =
+                        msg.body().deserialize::<(u32, f64, String)>()
+                        && sid == id
+                    {
+                        if percent < 0.0 {
+                            bar.pulse();
+                        } else {
+                            // 首个数值进度:停 pulse 定时器,改精确显示
+                            if let Some(pid) = pulse_id.take() {
+                                pid.remove();
+                            }
+                            bar.set_fraction((percent / 100.0).min(1.0));
+                        }
+                        if !desc.is_empty() {
+                            label_status.set_text(&desc);
+                        }
+                    }
+                }
+                "Finished" => {
+                    if let Ok((sid, finished_ok, detail)) =
+                        msg.body().deserialize::<(u32, bool, String)>()
+                        && sid == id
+                    {
+                        ok = finished_ok;
+                        if let Some(pid) = pulse_id.take() {
+                            pid.remove();
+                        }
+                        bar.set_fraction(1.0);
+                        if let Some(b) = &close_btn {
+                            b.set_sensitive(true);
+                        }
+                        if ok {
                             statusbar.push(ctx, &complete);
                             if autoclose.is_active() {
                                 dialog.destroy();
                             }
-                        }
-                        Ok(_) => {
-                            statusbar.push(ctx, &failed);
-                        }
-                        Err(e) => {
+                        } else {
                             statusbar.push(ctx, &failed);
                             show_alert(
                                 &window,
                                 AlertKind::Error,
                                 &gettext("gdebi error"),
-                                Some(&e),
+                                Some(&detail),
                             );
                         }
+                        window.set_sensitive(true);
+                        break;
                     }
-                    window.set_sensitive(true);
-                    break;
                 }
+                _ => {}
             }
+        }
+
+        // 信号流中断且未收到 Finished(守护进程退出/总线断开):兜底恢复
+        if pulse_id.is_some() {
+            if let Some(pid) = pulse_id.take() {
+                pid.remove();
+            }
+            if let Some(b) = &close_btn {
+                b.set_sensitive(true);
+            }
+            window.set_sensitive(true);
+            if !ok {
+                statusbar.push(ctx, &failed);
+            }
+        }
+
+        // 成功后重分析刷新(旧版 set_deb 复查行为:安装后状态即时更新)
+        if ok && let Some(f) = gui_reload.current_file.borrow().clone() {
+            load_deb(&gui_reload, &f);
         }
     });
 }
 
 fn on_install_clicked(gui: &Rc<MainWindow>) {
-    if !is_root()
-        // 旧版:提权提示对话框(execv gksu --message 的现代等价)
-        && !request_privileges(gui, false)
-    {
-        return;
-    }
+    // 提权由守护进程侧 Polkit 发起(认证对话框自动弹出),客户端无需 root
     if let Some(c) = gui.changes.borrow().as_ref()
         && !c.unauthenticated.is_empty()
     {
@@ -1045,23 +1157,19 @@ fn on_install_clicked(gui: &Rc<MainWindow>) {
             _ => return,
         }
     }
+    let file = gui.current_file.borrow().clone().unwrap_or_default();
     gui.statusbar
         .push(gui.status_ctx, gettext("Installing package file...").as_str());
-    run_action_dialog(
+    run_txn_dialog(
         gui,
         &gettext("Installing package file..."),
         gettext("Installation complete").to_string(),
         gettext("Failed to install package file").to_string(),
-        Box::new(move |ui, changes, file, opts| {
-            install::install(ui, ui, changes, file, opts)
-        }),
+        TxnRequest::Install { file },
     );
 }
 
 fn on_remove_clicked(gui: &Rc<MainWindow>) {
-    if !is_root() && !request_privileges(gui, true) {
-        return;
-    }
     let Some(pkgname) = gui
         .current_file
         .borrow()
@@ -1075,105 +1183,14 @@ fn on_remove_clicked(gui: &Rc<MainWindow>) {
     gui.statusbar
         .push(gui.status_ctx, gettext("Removing package...").as_str());
     // 旧版 dpkg_action(install=False) 经 apt 提交(级联处理依赖);
-    // 骨架期直接 dpkg -r(不级联,最小影响)
-    run_action_dialog(
+    // 管道版 dpkg -r 单包卸载(级联偏离见 daemon/txn.rs 注释)
+    run_txn_dialog(
         gui,
         &gettext("Removing package..."),
         gettext("Removal complete").to_string(),
         gettext("Failed to remove package").to_string(),
-        Box::new(move |ui, _changes, _file, _opts| {
-            use std::io::BufRead;
-            use std::process::{Command, Stdio};
-            let mut child = Command::new("dpkg")
-                .arg("-r")
-                .arg(&pkgname)
-                .stdout(Stdio::piped())
-                .stderr(Stdio::piped())
-                .spawn()?;
-            let out = child.stdout.take().expect("piped stdout");
-            let err = child.stderr.take().expect("piped stderr");
-            let ui_out = ThreadUi {
-                tx: ui.tx.clone(),
-            };
-            let t = std::thread::spawn(move || {
-                for line in std::io::BufReader::new(out).lines().map_while(Result::ok) {
-                    ui_out.output_line(&line);
-                }
-            });
-            for line in std::io::BufReader::new(err).lines().map_while(Result::ok) {
-                ui.output_line(&line);
-            }
-            let _ = t.join();
-            Ok(child.wait()?.code().unwrap_or(-1))
-        }),
+        TxnRequest::Remove { name: pkgname },
     );
-}
-
-/// 非 root 判定
-fn is_root() -> bool {
-    unsafe { libc::geteuid() == 0 }
-}
-
-/// 非 root 时请求提权:提示对话框(旧版 gksu --message 的文案与职责)确认后
-/// 经 pkexec 重启自身执行动作(polkit agent 负责认证)。
-/// exec 成功则进程映像被替换不返回(窗口随进程消失,与旧版 execv 行为一致);
-/// 返回 false 表示用户取消或启动失败,界面保持可用。
-fn request_privileges(gui: &Rc<MainWindow>, remove: bool) -> bool {
-    let (header, body) = if remove {
-        (
-            gettext("You need to grant administrative rights to remove software"),
-            gettext("It is a possible risk to remove packages."),
-        )
-    } else {
-        (
-            gettext("You need to grant administrative rights to install software"),
-            gettext(
-                "It is a possible security risk to install packages files manually.\nInstall software from trustworthy software distributors only.",
-            ),
-        )
-    };
-    let ui = GtkUi {
-        parent: gui.window.clone().upcast(),
-    };
-    match ui.confirm(&header, Some(&body)) {
-        Ok(true) => {}
-        _ => return false,
-    }
-
-    let exe = match std::env::current_exe() {
-        Ok(p) => p,
-        Err(e) => {
-            show_alert(
-                &gui.window,
-                AlertKind::Error,
-                &gettext("Failed to locate the program executable"),
-                Some(&e.to_string()),
-            );
-            return false;
-        }
-    };
-    let Some(deb) = gui.current_file.borrow().clone() else {
-        return false;
-    };
-    // 重启后的 cwd 不保证继承,deb 必须绝对路径
-    let deb = std::path::absolute(&deb).unwrap_or(deb);
-
-    use std::os::unix::process::CommandExt;
-    let mut cmd = std::process::Command::new("pkexec");
-    cmd.arg(&exe).arg("--non-interactive");
-    if remove {
-        cmd.arg("--remove");
-    }
-    cmd.arg(&deb);
-    let e = cmd.exec();
-    // 仅 exec 失败时到达(pkexec 缺失、路径不可执行等)
-    show_alert(
-        &gui.window,
-        AlertKind::Error,
-        &gettext("Failed to start pkexec"),
-        Some(&e.to_string()),
-    );
-    false
 }
 
 fn show_details<W: IsA<gtk::Window>>(

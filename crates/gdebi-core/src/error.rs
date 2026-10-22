@@ -16,6 +16,14 @@ pub enum GdebiError {
     UnsupportedCompression(&'static str),
     MissingField(&'static str),
     Io(io::Error),
+    /// 子进程(dpkg 系统能力调用)执行失败:命令 + stderr 摘要
+    Subprocess(String, String),
+    /// 仓库索引解压失败:文件 + 原因
+    ListDecompress(String, String),
+    /// 下载失败:URL + 原因
+    Download(String, String),
+    /// 用户请求取消
+    Cancelled,
 }
 
 impl From<io::Error> for GdebiError {
@@ -39,6 +47,14 @@ impl fmt::Display for GdebiError {
             Self::MissingField(name) => tf("missing control field: {0}", &[name]),
             // 透明转发:OS strerror 已随系统 locale 本地化,不再包裹
             Self::Io(e) => return write!(f, "{e}"),
+            Self::Subprocess(cmd, stderr) => {
+                tf("subprocess {0} failed: {1}", &[cmd, stderr.trim()])
+            }
+            Self::ListDecompress(path, reason) => {
+                tf("cannot decompress repository index {0}: {1}", &[path, reason])
+            }
+            Self::Download(url, reason) => tf("cannot download {0}: {1}", &[url, reason]),
+            Self::Cancelled => gettext("operation cancelled"),
         };
         f.write_str(&msg)
     }

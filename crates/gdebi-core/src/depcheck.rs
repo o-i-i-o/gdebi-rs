@@ -697,13 +697,28 @@ fn run_captured(cmd: &mut Command) -> Result<(String, String, Option<i32>), Gdeb
     ))
 }
 
+/// 单行输出(去首尾空白;dpkg 子进程输出带尾随换行,native_arch 直接
+/// 参与相等比较,漏 trim 会导致非 all 架构全部误判)
 fn run_line(cmd: &mut Command) -> Result<String, GdebiError> {
-    Ok(run_captured(cmd)?.0)
+    Ok(run_captured(cmd)?.0.trim().to_string())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// 回归:run_line 须去尾随换行 — native_arch 曾带 "\n",导致非 all
+    /// 架构全部被误判为 Wrong architecture
+    #[test]
+    fn native_arch_matches_dpkg_without_whitespace() {
+        let checker = DepChecker::new(&[]).expect("checker");
+        let out = Command::new("dpkg")
+            .arg("--print-architecture")
+            .output()
+            .expect("dpkg available");
+        let expected = String::from_utf8_lossy(&out.stdout).trim().to_string();
+        assert_eq!(checker.native_arch, expected);
+    }
 
     #[test]
     fn parse_depends_groups() {

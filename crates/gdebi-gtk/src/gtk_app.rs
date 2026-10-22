@@ -276,6 +276,8 @@ fn build_window(
     label_status.set_wrap(true);
     label_status.set_use_markup(true);
     let button_details = gtk::Button::with_mnemonic(&gettext("_Details"));
+    // 旧版 __init__ 初始隐藏,加载 deb 后按 verdict 再决定显隐
+    button_details.hide();
 
     let grid = gtk::Grid::builder()
         .column_spacing(12)
